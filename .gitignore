@@ -1,0 +1,7 @@
+# Build results
+/bin/
+/obj/
+
+# Alternative syntax (if needed)
+**/bin/
+**/obj/
