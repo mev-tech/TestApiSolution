@@ -12,18 +12,47 @@ concurrency:
 
 jobs:
   dotnet:
+    name: dotnet
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
-      - run: dotnet restore ./TestApi.sln
-      - run: dotnet build ./TestApi.sln -c Release --no-restore
-      - run: dotnet test ./TestApi.sln -c Release --no-build
+
+      # Format check (fails CI if formatting would change files)
+      - name: Format (verify no changes)
+        run: dotnet format ./TestApi.sln --verify-no-changes
+
+      - name: Restore
+        run: dotnet restore ./TestApi.sln
+
+      - name: Build
+        run: dotnet build ./TestApi.sln -c Release --no-restore
+
+      - name: Test + Coverage
+        run: dotnet test ./TestApi.sln -c Release --no-build --collect:"XPlat Code Coverage"
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            **/TestResults/**
+
 
   docker:
+    name: docker
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - run: docker build -t testapi:${{ github.sha }} .
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        run: docker build -t testapi:${{ github.sha }} .
