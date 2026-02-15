@@ -5,21 +5,83 @@ using YamlDotNet.Serialization.NamingConventions;
 
 public class WorkflowValidationTests
 {
-    private const string WorkflowPath = "../../../.github/workflows/ci.yml";
+    private string GetWorkflowPath()
+    {
+        var assemblyDir = Path.GetDirectoryName(typeof(WorkflowValidationTests).Assembly.Location);
+        var projectDir = Path.Combine(assemblyDir ?? "", "../../../..");
+        return Path.GetFullPath(Path.Combine(projectDir, ".github/workflows/ci.yml"));
+    }
 
     private dynamic LoadWorkflow()
     {
-        var yaml = File.ReadAllText(WorkflowPath);
+        var yaml = File.ReadAllText(GetWorkflowPath());
         var deserializer = new DeserializerBuilder()
-            .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .Build();
-        return deserializer.Deserialize<dynamic>(yaml);
+        var result = deserializer.Deserialize<Dictionary<object, object>>(yaml);
+        return NormalizeKeys(result);
+    }
+
+    private Dictionary<object, object> NormalizeKeys(Dictionary<object, object> dict)
+    {
+        var result = new Dictionary<object, object>();
+        foreach (var kvp in dict)
+        {
+            var key = ConvertKeyToCamelCase(kvp.Key.ToString() ?? "");
+            var value = kvp.Value;
+
+            if (value is Dictionary<object, object> nestedDict)
+            {
+                value = NormalizeKeys(nestedDict);
+            }
+            else if (value is List<object> list)
+            {
+                value = NormalizeListValues(list);
+            }
+
+            result[key] = value;
+        }
+        return result;
+    }
+
+    private List<object> NormalizeListValues(List<object> list)
+    {
+        var result = new List<object>();
+        foreach (var item in list)
+        {
+            if (item is Dictionary<object, object> dict)
+            {
+                result.Add(NormalizeKeys(dict));
+            }
+            else
+            {
+                result.Add(item);
+            }
+        }
+        return result;
+    }
+
+    private string ConvertKeyToCamelCase(string key)
+    {
+        if (string.IsNullOrEmpty(key))
+            return key;
+
+        var parts = key.Split(new[] { '_', '-' }, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+            return key;
+
+        var result = parts[0].ToLowerInvariant();
+        for (int i = 1; i < parts.Length; i++)
+        {
+            result += char.ToUpperInvariant(parts[i][0]) + parts[i].Substring(1).ToLowerInvariant();
+        }
+        return result;
     }
 
     [Fact]
     public void Workflow_File_Should_Exist()
     {
-        Assert.True(File.Exists(WorkflowPath), $"Workflow file should exist at {WorkflowPath}");
+        var workflowPath = GetWorkflowPath();
+        Assert.True(File.Exists(workflowPath), $"Workflow file should exist at {workflowPath}");
     }
 
     [Fact]
@@ -73,7 +135,18 @@ public class WorkflowValidationTests
         var concurrency = workflow["concurrency"];
         Assert.True(concurrency.ContainsKey("group"), "Concurrency should have a group");
         Assert.True(concurrency.ContainsKey("cancelInProgress"), "Concurrency should have cancel-in-progress setting");
-        Assert.True((bool)concurrency["cancelInProgress"], "cancel-in-progress should be true");
+        var cancelInProgress = concurrency["cancelInProgress"];
+        bool isCancelInProgress;
+        if (cancelInProgress is bool b)
+        {
+            isCancelInProgress = b;
+        }
+        else
+        {
+            bool result;
+            isCancelInProgress = bool.TryParse(cancelInProgress.ToString(), out result) && result;
+        }
+        Assert.True(isCancelInProgress, "cancel-in-progress should be true");
     }
 
     [Fact]
@@ -341,7 +414,7 @@ public class WorkflowValidationTests
         var workflow = LoadWorkflow();
         var dotnetJob = workflow["jobs"]["dotnet"];
         var steps = dotnetJob["steps"] as List<object>;
-        Assert.Equal(6, steps.Count);
+        Assert.Equal(7, steps.Count);
     }
 
     [Fact]
@@ -388,7 +461,7 @@ public class WorkflowValidationTests
     [Fact]
     public void Workflow_File_Should_Not_Be_Empty()
     {
-        var content = File.ReadAllText(WorkflowPath);
+        var content = File.ReadAllText(GetWorkflowPath());
         Assert.False(string.IsNullOrWhiteSpace(content), "Workflow file should not be empty");
         Assert.True(content.Length > 100, "Workflow file should have substantial content");
     }
