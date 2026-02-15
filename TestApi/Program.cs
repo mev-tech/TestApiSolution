@@ -16,27 +16,31 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+app.MapGet("/weatherforecast", GetWeatherForecast)
+    .WithName("GetWeatherForecast")
+    .WithOpenApi();
 
 app.Run();
+
+public partial class Program
+{
+    private static readonly string[] Summaries =
+    [
+        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+    ];
+
+    public static WeatherForecast[] GetWeatherForecast()
+    {
+        return Enumerable.Range(1, 5)
+            .Select(index =>
+                new WeatherForecast(
+                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                    Random.Shared.Next(-20, 55),
+                    Summaries[Random.Shared.Next(Summaries.Length)]
+                ))
+            .ToArray();
+    }
+}
 
 /// <summary>
 /// Represents a weather forecast with date, temperature in Celsius, and summary description.
@@ -44,7 +48,7 @@ app.Run();
 /// <param name="Date">The date of the forecast.</param>
 /// <param name="TemperatureC">Temperature in Celsius.</param>
 /// <param name="Summary">Weather condition summary (e.g., "Mild", "Warm").</param>
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+public record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     /// <summary>
     /// Gets the temperature in Fahrenheit, converted from TemperatureC.

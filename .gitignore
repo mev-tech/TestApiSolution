@@ -5,3 +5,8 @@
 # Alternative syntax (if needed)
 **/bin/
 **/obj/
+
+# Test results and coverage
+**/TestResults/
+*.coverage
+*.opencover.xml
