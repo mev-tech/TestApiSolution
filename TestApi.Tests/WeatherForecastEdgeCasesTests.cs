@@ -159,24 +159,6 @@ public class WeatherForecastEdgeCasesTests
     }
 
     [Fact]
-    public void WeatherForecast_GetHashCode_ShouldDifferForDifferentObjects()
-    {
-        // Arrange
-        var date = new DateOnly(2026, 2, 15);
-        var forecast1 = new WeatherForecastForEdgeCases(date, 20, "Mild");
-        var forecast2 = new WeatherForecastForEdgeCases(date, 25, "Warm");
-
-        // Act
-        var hash1 = forecast1.GetHashCode();
-        var hash2 = forecast2.GetHashCode();
-
-        // Assert
-        // Note: Hash codes CAN be equal for different objects, but typically aren't
-        // This is a probabilistic test
-        Assert.NotEqual(hash1, hash2);
-    }
-
-    [Fact]
     public void WeatherForecast_Deconstruction_ShouldWork()
     {
         // Arrange

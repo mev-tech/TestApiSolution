@@ -140,10 +140,10 @@ public class ProjectStructureTests
         // Arrange
         var readmePath = Path.Combine(GetSolutionRoot(), "README.md");
 
-        // Act
-        var content = File.ReadAllText(readmePath);
+        // Act & Assert - Check existence first to avoid FileNotFoundException
+        Assert.True(File.Exists(readmePath), "README.md must exist in the project root");
 
-        // Assert
+        var content = File.ReadAllText(readmePath);
         Assert.NotEmpty(content);
         Assert.Contains("TestApi", content);
     }
