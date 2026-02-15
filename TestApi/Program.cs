@@ -33,12 +33,25 @@ app.MapGet("/weatherforecast", () =>
         .ToArray();
     return forecast;
 })
-.WithName("GetWeatherForecast1")
+.WithName("GetWeatherForecast")
 .WithOpenApi();
 
 app.Run();
 
+/// <summary>
+/// Represents a weather forecast with date, temperature in Celsius, and summary description.
+/// </summary>
+/// <param name="Date">The date of the forecast.</param>
+/// <param name="TemperatureC">Temperature in Celsius.</param>
+/// <param name="Summary">Weather condition summary (e.g., "Mild", "Warm").</param>
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
+    /// <summary>
+    /// Gets the temperature in Fahrenheit, converted from TemperatureC.
+    /// </summary>
+    /// <remarks>
+    /// Uses the formula: F = 32 + (C / 0.5556)
+    /// Integer division may cause slight inaccuracies.
+    /// </remarks>
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }

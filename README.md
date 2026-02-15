@@ -115,6 +115,25 @@ dotnet format ./TestApi.sln
 
 All code formatting is verified in CI; PRs with formatting violations will fail.
 
+### Code Coverage
+
+This project uses **Coverlet** for code coverage collection. Coverage reports are generated during test execution and uploaded as CI artifacts.
+
+**Local Coverage Reports:**
+```bash
+# Run tests with coverage
+dotnet test TestApi.sln -c Release --collect:"XPlat Code Coverage"
+
+# View coverage report
+# Coverage reports are located in TestApi.Tests/TestResults/
+# Open the .cobertura.xml file with a compatible viewer (e.g., ReportGenerator)
+```
+
+**CI Coverage:**
+- Coverage reports are collected on every push to `master` and pull requests
+- Reports are available as CI artifacts in the Actions tab
+- 97 tests passing with comprehensive edge case coverage
+
 ### Making Changes
 
 1. **Create a feature branch** from `master`

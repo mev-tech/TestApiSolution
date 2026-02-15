@@ -2,6 +2,10 @@ using YamlDotNet.RepresentationModel;
 
 namespace TestApi.Tests;
 
+/// <summary>
+/// Tests to validate GitHub Actions workflow configurations.
+/// Verifies CI and Release workflows have correct structure, triggers, and required jobs.
+/// </summary>
 public class WorkflowValidationTests
 {
     private static string GetSolutionRoot()
