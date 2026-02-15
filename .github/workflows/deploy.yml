@@ -75,7 +75,7 @@ jobs:
 
   # Deploy to prod: auto on published GitHub Release OR manual dispatch with Production selected
   deploy-prod:
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Production')
+    if: (github.event_name == 'release' && github.event.release.prerelease == false) || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Production')
     needs: test
     uses: ./.github/workflows/deploy-lambda.yml
     with:
