@@ -3,8 +3,8 @@ name: Deploy
 on:
   push:
     branches: ["master"]
-    tags:
-      - "v*.*.*"
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       environment:
@@ -18,7 +18,7 @@ on:
           - Production
 
 concurrency:
-  group: deploy-${{ github.event.inputs.environment || (startsWith(github.ref, 'refs/tags/v') && 'Production' || 'Staging') }}
+  group: deploy-${{ github.event.inputs.environment || (github.event_name == 'release' && 'Production' || 'Staging') }}
   cancel-in-progress: false
 
 permissions:
@@ -73,9 +73,9 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
 
-  # Deploy to prod: auto on release tag (v*.*.*) OR manual dispatch with Production selected
+  # Deploy to prod: auto on published GitHub Release OR manual dispatch with Production selected
   deploy-prod:
-    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Production')
+    if: (github.event_name == 'release' && github.event.release.prerelease == false) || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Production')
     needs: test
     uses: ./.github/workflows/deploy-lambda.yml
     with:
