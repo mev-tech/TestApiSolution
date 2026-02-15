@@ -303,4 +303,17 @@ public class WeatherForecastEdgeCasesTests
         // Assert
         Assert.NotNull(forecast);
     }
+
+    [Fact]
+    public void WeatherForecast_Summary_ShouldHandleNull()
+    {
+        // Arrange
+        var date = new DateOnly(2026, 2, 15);
+
+        // Act
+        var forecast = new WeatherForecastForEdgeCases(date, 20, null);
+
+        // Assert
+        Assert.Null(forecast.Summary);
+    }
 }
