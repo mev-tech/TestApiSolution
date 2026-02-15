@@ -74,7 +74,7 @@ Returns a 5-day weather forecast with random temperatures.
 
 ## Project Structure
 
-```
+```text
 TestApiSolution/
 ├── TestApi/                    # Main API project
 │   ├── Program.cs              # Application entry point & endpoint definitions
