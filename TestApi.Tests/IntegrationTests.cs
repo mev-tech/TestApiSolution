@@ -155,4 +155,57 @@ public class IntegrationTests : IAsyncLifetime
             Assert.InRange(tempC, -20, 55);
         }
     }
+
+    [Fact]
+    public async Task GetHealthz_ShouldReturn200Ok()
+    {
+        var response = await _client!.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetHealthz_ShouldReturnHealthyStatus()
+    {
+        var response = await _client!.GetAsync("/healthz");
+        var content = await response.Content.ReadAsStringAsync();
+
+        using var doc = JsonDocument.Parse(content);
+        Assert.Equal("healthy", doc.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task App_WithElkSink_StartsAndResponds()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            b.UseSetting("LoggingSink", "elk")
+        );
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task App_WithSeqSink_StartsAndResponds()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            b.UseSetting("LoggingSink", "seq")
+        );
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task App_WithNoSink_StartsAndResponds()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            b.UseSetting("LoggingSink", "")
+        );
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
 }
