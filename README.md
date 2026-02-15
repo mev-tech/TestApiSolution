@@ -1,5 +1,7 @@
 # TestApi
 
+[![codecov](https://codecov.io/gh/mev-tech/TestApiSolution/branch/master/graph/badge.svg)](https://codecov.io/gh/mev-tech/TestApiSolution)
+
 A minimal, production-ready ASP.NET Core 8.0 Web API built with .NET's minimal APIs pattern.
 
 ## Overview

@@ -10,6 +10,10 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   dotnet:
     name: dotnet
@@ -35,15 +39,16 @@ jobs:
         run: dotnet build ./TestApi.sln -c Release --no-restore
 
       - name: Test + Coverage
-        run: dotnet test ./TestApi.sln -c Release --no-build --collect:"XPlat Code Coverage"
+        run: >
+          dotnet test ./TestApi.sln -c Release --no-build
+          --collect:"XPlat Code Coverage"
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
-      - name: Upload coverage artifact
-        if: always()
-        uses: actions/upload-artifact@v6
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
         with:
-          name: coverage
-          path: |
-            **/TestResults/**
+          files: "**/coverage.opencover.xml"
+          use_oidc: true
 
 
   docker:
