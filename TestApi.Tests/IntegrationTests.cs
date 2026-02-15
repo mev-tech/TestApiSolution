@@ -48,9 +48,10 @@ public class IntegrationTests : IAsyncLifetime
     {
         // Act
         var response = await _client!.GetAsync("/weatherforecast");
-        var content = await response.Content.ReadAsStringAsync();
 
         // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(content);
         Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
     }
@@ -60,9 +61,10 @@ public class IntegrationTests : IAsyncLifetime
     {
         // Act
         var response = await _client!.GetAsync("/weatherforecast");
-        var content = await response.Content.ReadAsStringAsync();
 
         // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(content);
         Assert.Equal(5, doc.RootElement.GetArrayLength());
     }
@@ -72,9 +74,10 @@ public class IntegrationTests : IAsyncLifetime
     {
         // Act
         var response = await _client!.GetAsync("/weatherforecast");
-        var content = await response.Content.ReadAsStringAsync();
 
         // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(content);
         var forecasts = doc.RootElement;
 
@@ -145,9 +148,10 @@ public class IntegrationTests : IAsyncLifetime
     {
         // Act
         var response = await _client!.GetAsync("/weatherforecast");
-        var content = await response.Content.ReadAsStringAsync();
 
         // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(content);
         foreach (var forecast in doc.RootElement.EnumerateArray())
         {
@@ -167,6 +171,7 @@ public class IntegrationTests : IAsyncLifetime
     public async Task GetHealthz_ShouldReturnHealthyStatus()
     {
         var response = await _client!.GetAsync("/healthz");
+        response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
 
         using var doc = JsonDocument.Parse(content);
