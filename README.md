@@ -281,6 +281,28 @@ Run:
 docker run -p 8080:8080 testapi:latest
 ```
 
+### AWS Lambda (Deployed ✅)
+
+The API is deployed as an **AWS Lambda Function** with a public Function URL for serverless execution.
+
+**Deployment Details:**
+- Automated deployment via GitHub Actions on push to `master`
+- Lambda runtime: .NET 8.0
+- Region: `eu-north-1`
+- Accessible via public Function URL
+
+**Required IAM Permissions for Deployment:**
+
+To deploy updates to Lambda, the IAM user needs these permissions:
+- `lambda:CreateFunction` — Create Lambda function
+- `lambda:UpdateFunctionCode` — Update function code
+- `lambda:UpdateFunctionConfiguration` — Update configuration
+- `lambda:CreateFunctionUrlConfig` — Create public Function URL
+- `lambda:UpdateFunctionUrlConfig` — Update Function URL config
+- `iam:PassRole` — Pass the Lambda execution role
+
+**Note:** For public Function URLs on new AWS accounts, both `lambda:InvokeFunctionUrl` AND `lambda:InvokeFunction` permissions are required.
+
 ### Production Considerations
 
 For production deployment:

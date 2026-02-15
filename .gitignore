@@ -13,3 +13,7 @@
 
 # Lambda publish artifacts
 **/publish/
+
+# Lambda deployment config (contains AWS account IDs and role ARNs)
+aws-lambda-tools-defaults.json
+**/aws-lambda-tools-defaults.json
