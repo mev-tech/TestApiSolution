@@ -14,8 +14,9 @@ reviews:
   # What to focus on during reviews
   profile: "chill"        # "chill" = concise feedback | "assertive" = strict feedback
 
-  # Request changes workflow — set to true to block merges when issues are found
-  request_changes_workflow: false
+  # Request changes workflow — CodeRabbit blocks the PR when issues are found,
+  # then auto-approves once all comments are resolved and CI is passing.
+  request_changes_workflow: true
 
   path_filters:
     # Ignore generated/build artefacts
