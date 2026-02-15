@@ -116,6 +116,9 @@ public partial class Program
         "Scorching",
     ];
 
+    /// <summary>
+    /// Returns a 5-day weather forecast with random temperatures and summaries.
+    /// </summary>
     public static WeatherForecast[] GetWeatherForecast()
     {
         return Enumerable
