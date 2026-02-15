@@ -316,4 +316,58 @@ public class WeatherForecastEdgeCasesTests
         // Assert
         Assert.Null(forecast.Summary);
     }
+
+    [Fact]
+    public void WeatherForecast_ZeroTemperature_ShouldHandleCorrectly()
+    {
+        // Arrange
+        var date = new DateOnly(2026, 2, 15);
+        var temperatureC = 0;
+
+        // Act
+        var forecast = new WeatherForecastForEdgeCases(date, temperatureC, "Freezing");
+        var temperatureF = forecast.TemperatureF;
+
+        // Assert - 0°C should equal 32°F
+        Assert.Equal(temperatureC, forecast.TemperatureC);
+        Assert.Equal(32, temperatureF);
+    }
+
+    [Fact]
+    public void WeatherForecast_EqualityOperator_ShouldReturnTrueForSameValues()
+    {
+        // Arrange
+        var date = new DateOnly(2026, 2, 15);
+        var forecast1 = new WeatherForecastForEdgeCases(date, 20, "Mild");
+        var forecast2 = new WeatherForecastForEdgeCases(date, 20, "Mild");
+
+        // Act & Assert
+        Assert.Equal(forecast1, forecast2);
+        Assert.True(forecast1 == forecast2);
+    }
+
+    [Fact]
+    public void WeatherForecast_EqualityOperator_ShouldReturnFalseForDifferentValues()
+    {
+        // Arrange
+        var date = new DateOnly(2026, 2, 15);
+        var forecast1 = new WeatherForecastForEdgeCases(date, 20, "Mild");
+        var forecast2 = new WeatherForecastForEdgeCases(date, 25, "Warm");
+
+        // Act & Assert
+        Assert.NotEqual(forecast1, forecast2);
+        Assert.True(forecast1 != forecast2);
+    }
+
+    [Fact]
+    public void WeatherForecast_InequalityOperator_ShouldReturnTrueForDifferentObjects()
+    {
+        // Arrange
+        var date = new DateOnly(2026, 2, 15);
+        var forecast1 = new WeatherForecastForEdgeCases(date, 20, "Mild");
+        var forecast2 = new WeatherForecastForEdgeCases(date, 20, "Hot");
+
+        // Act & Assert
+        Assert.True(forecast1 != forecast2);
+    }
 }
