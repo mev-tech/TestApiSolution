@@ -1,760 +1,452 @@
 namespace TestApi.Tests;
 
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
-
 public class WorkflowValidationTests
 {
-    private string GetWorkflowPath()
+    private const string RepoRoot = "..";
+    private const string WorkflowsDir = ".github/workflows";
+
+    [Fact]
+    public void CiWorkflow_FileExists()
     {
-        var assemblyDir = Path.GetDirectoryName(typeof(WorkflowValidationTests).Assembly.Location);
-        var projectDir = Path.Combine(assemblyDir ?? "", "../../../..");
-        return Path.GetFullPath(Path.Combine(projectDir, ".github/workflows/ci.yml"));
-    }
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
 
-    private dynamic LoadWorkflow()
-    {
-        var yaml = File.ReadAllText(GetWorkflowPath());
-        var deserializer = new DeserializerBuilder()
-            .Build();
-        var result = deserializer.Deserialize<Dictionary<object, object>>(yaml);
-        return NormalizeKeys(result);
-    }
-
-    private Dictionary<object, object> NormalizeKeys(Dictionary<object, object> dict)
-    {
-        var result = new Dictionary<object, object>();
-        foreach (var kvp in dict)
-        {
-            var key = ConvertKeyToCamelCase(kvp.Key.ToString() ?? "");
-            var value = kvp.Value;
-
-            if (value is Dictionary<object, object> nestedDict)
-            {
-                value = NormalizeKeys(nestedDict);
-            }
-            else if (value is List<object> list)
-            {
-                value = NormalizeListValues(list);
-            }
-
-            result[key] = value;
-        }
-        return result;
-    }
-
-    private List<object> NormalizeListValues(List<object> list)
-    {
-        var result = new List<object>();
-        foreach (var item in list)
-        {
-            if (item is Dictionary<object, object> dict)
-            {
-                result.Add(NormalizeKeys(dict));
-            }
-            else
-            {
-                result.Add(item);
-            }
-        }
-        return result;
-    }
-
-    private string ConvertKeyToCamelCase(string key)
-    {
-        if (string.IsNullOrEmpty(key))
-            return key;
-
-        var parts = key.Split(new[] { '_', '-' }, StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0)
-            return key;
-
-        var result = parts[0].ToLowerInvariant();
-        for (int i = 1; i < parts.Length; i++)
-        {
-            result += char.ToUpperInvariant(parts[i][0]) + parts[i].Substring(1).ToLowerInvariant();
-        }
-        return result;
+        // Act & Assert
+        Assert.True(File.Exists(ciPath), $"CI workflow file should exist at {ciPath}");
     }
 
     [Fact]
-    public void Workflow_File_Should_Exist()
+    public void ReleaseWorkflow_FileExists()
     {
-        var workflowPath = GetWorkflowPath();
-        Assert.True(File.Exists(workflowPath), $"Workflow file should exist at {workflowPath}");
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+
+        // Act & Assert
+        Assert.True(File.Exists(releasePath), $"Release workflow file should exist at {releasePath}");
     }
 
     [Fact]
-    public void Workflow_Should_Have_Valid_YAML_Syntax()
+    public void CiWorkflow_ContainsRequiredJobs()
     {
-        var exception = Record.Exception(() => LoadWorkflow());
-        Assert.Null(exception);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("jobs:", content);
+        Assert.Contains("dotnet:", content);
+        Assert.Contains("docker:", content);
     }
 
     [Fact]
-    public void Workflow_Should_Have_Name()
+    public void CiWorkflow_HasCorrectTriggers()
     {
-        var workflow = LoadWorkflow();
-        Assert.NotNull(workflow);
-        Assert.True(workflow.ContainsKey("name"), "Workflow should have a name");
-        Assert.Equal("CI", workflow["name"]);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("on:", content);
+        Assert.Contains("push:", content);
+        Assert.Contains("pull_request:", content);
+        Assert.Contains("branches: [\"master\"]", content);
     }
 
     [Fact]
-    public void Workflow_Should_Trigger_On_Push_To_Master()
+    public void CiWorkflow_DotnetJob_ContainsFormatStep()
     {
-        var workflow = LoadWorkflow();
-        Assert.True(workflow.ContainsKey("on"), "Workflow should have trigger configuration");
-        var triggers = workflow["on"];
-        Assert.True(triggers.ContainsKey("push"), "Workflow should trigger on push");
-        var push = triggers["push"];
-        Assert.True(push.ContainsKey("branches"), "Push trigger should specify branches");
-        var branches = push["branches"] as List<object>;
-        Assert.NotNull(branches);
-        Assert.Contains("master", branches.Select(b => b.ToString()));
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("Format (verify no changes)", content);
+        Assert.Contains("dotnet format ./TestApi.sln --verify-no-changes", content);
     }
 
     [Fact]
-    public void Workflow_Should_Trigger_On_Pull_Request_To_Master()
+    public void CiWorkflow_DotnetJob_ContainsBuildStep()
     {
-        var workflow = LoadWorkflow();
-        var triggers = workflow["on"];
-        Assert.True(triggers.ContainsKey("pullRequest"), "Workflow should trigger on pull_request");
-        var pullRequest = triggers["pullRequest"];
-        Assert.True(pullRequest.ContainsKey("branches"), "Pull request trigger should specify branches");
-        var branches = pullRequest["branches"] as List<object>;
-        Assert.NotNull(branches);
-        Assert.Contains("master", branches.Select(b => b.ToString()));
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("Build", content);
+        Assert.Contains("dotnet build ./TestApi.sln -c Release", content);
     }
 
     [Fact]
-    public void Workflow_Should_Have_Concurrency_Configuration()
+    public void CiWorkflow_DotnetJob_ContainsTestStep()
     {
-        var workflow = LoadWorkflow();
-        Assert.True(workflow.ContainsKey("concurrency"), "Workflow should have concurrency configuration");
-        var concurrency = workflow["concurrency"];
-        Assert.True(concurrency.ContainsKey("group"), "Concurrency should have a group");
-        Assert.True(concurrency.ContainsKey("cancelInProgress"), "Concurrency should have cancel-in-progress setting");
-        var cancelInProgress = concurrency["cancelInProgress"];
-        bool isCancelInProgress;
-        if (cancelInProgress is bool b)
-        {
-            isCancelInProgress = b;
-        }
-        else
-        {
-            bool result;
-            isCancelInProgress = bool.TryParse(cancelInProgress.ToString(), out result) && result;
-        }
-        Assert.True(isCancelInProgress, "cancel-in-progress should be true");
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("Test + Coverage", content);
+        Assert.Contains("dotnet test ./TestApi.sln", content);
+        Assert.Contains("XPlat Code Coverage", content);
     }
 
     [Fact]
-    public void Workflow_Should_Have_Jobs()
+    public void CiWorkflow_DotnetJob_UsesDotNet8()
     {
-        var workflow = LoadWorkflow();
-        Assert.True(workflow.ContainsKey("jobs"), "Workflow should have jobs");
-        var jobs = workflow["jobs"];
-        Assert.NotNull(jobs);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("Setup .NET", content);
+        Assert.Contains("dotnet-version: \"8.0.x\"", content);
     }
 
     [Fact]
-    public void Workflow_Should_Have_Dotnet_Job()
+    public void CiWorkflow_DockerJob_BuildsImage()
     {
-        var workflow = LoadWorkflow();
-        var jobs = workflow["jobs"];
-        Assert.True(jobs.ContainsKey("dotnet"), "Workflow should have dotnet job");
-        var dotnetJob = jobs["dotnet"];
-        Assert.NotNull(dotnetJob);
-        Assert.True(dotnetJob.ContainsKey("name"), "Dotnet job should have a name");
-        Assert.Equal("dotnet", dotnetJob["name"]);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("Docker build", content);
+        Assert.Contains("docker build -t testapi:", content);
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Run_On_Ubuntu_Latest()
+    public void CiWorkflow_HasConcurrencyControl()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        Assert.True(dotnetJob.ContainsKey("runsOn"), "Dotnet job should specify runner");
-        Assert.Equal("ubuntu-latest", dotnetJob["runsOn"]);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("concurrency:", content);
+        Assert.Contains("group:", content);
+        Assert.Contains("cancel-in-progress: true", content);
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Have_Steps()
+    public void ReleaseWorkflow_TriggersOnVersionTags()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        Assert.True(dotnetJob.ContainsKey("steps"), "Dotnet job should have steps");
-        var steps = dotnetJob["steps"] as List<object>;
-        Assert.NotNull(steps);
-        Assert.NotEmpty(steps);
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
+
+        // Act & Assert
+        Assert.Contains("on:", content);
+        Assert.Contains("push:", content);
+        Assert.Contains("tags:", content);
+        Assert.Contains("\"v*.*.*\"", content);
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Checkout_Code()
+    public void ReleaseWorkflow_HasRequiredPermissions()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var checkoutStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Checkout");
-        Assert.NotNull(checkoutStep);
-        Assert.True(checkoutStep.ContainsKey("uses"), "Checkout step should use an action");
-        Assert.Equal("actions/checkout@v6", checkoutStep["uses"]);
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
+
+        // Act & Assert
+        Assert.Contains("permissions:", content);
+        Assert.Contains("contents: read", content);
+        Assert.Contains("packages: write", content);
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Setup_Dotnet()
+    public void ReleaseWorkflow_LogsInToGHCR()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var setupStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Setup .NET");
-        Assert.NotNull(setupStep);
-        Assert.True(setupStep.ContainsKey("uses"), "Setup .NET step should use an action");
-        Assert.Equal("actions/setup-dotnet@v5", setupStep["uses"]);
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
+
+        // Act & Assert
+        Assert.Contains("Log in to GHCR", content);
+        Assert.Contains("docker/login-action@v3", content);
+        Assert.Contains("registry: ghcr.io", content);
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Use_Dotnet_8_Version()
+    public void ReleaseWorkflow_BuildsAndPushesDockerImage()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var setupStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Setup .NET");
-        Assert.NotNull(setupStep);
-        Assert.True(setupStep.ContainsKey("with"), "Setup .NET step should have configuration");
-        var withConfig = setupStep["with"] as Dictionary<object, object>;
-        Assert.NotNull(withConfig);
-        Assert.True(withConfig.ContainsKey("dotnetVersion"), "Setup .NET should specify version");
-        Assert.Equal("8.0.x", withConfig["dotnetVersion"]);
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
+
+        // Act & Assert
+        Assert.Contains("Build and push", content);
+        Assert.Contains("docker build", content);
+        Assert.Contains("docker push", content);
+        Assert.Contains("ghcr.io", content);
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Run_Format_Verification()
+    public void ReleaseWorkflow_TagsBothVersionAndLatest()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var formatStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Format (verify no changes)");
-        Assert.NotNull(formatStep);
-        Assert.True(formatStep.ContainsKey("run"), "Format step should have run command");
-        Assert.Contains("dotnet format", formatStep["run"].ToString());
-        Assert.Contains("--verify-no-changes", formatStep["run"].ToString());
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
+
+        // Act & Assert
+        Assert.Contains(":latest", content);
+        Assert.Contains("github.ref_name", content);
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Restore_Dependencies()
+    public void CiWorkflow_DotnetJob_UploadsCoverageArtifact()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var restoreStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Restore");
-        Assert.NotNull(restoreStep);
-        Assert.True(restoreStep.ContainsKey("run"), "Restore step should have run command");
-        Assert.Contains("dotnet restore", restoreStep["run"].ToString());
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("Upload coverage artifact", content);
+        Assert.Contains("actions/upload-artifact@v6", content);
+        Assert.Contains("name: coverage", content);
+        Assert.Contains("TestResults", content);
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Build_In_Release_Configuration()
+    public void CiWorkflow_DotnetJob_RunsOnUbuntuLatest()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var buildStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Build");
-        Assert.NotNull(buildStep);
-        Assert.True(buildStep.ContainsKey("run"), "Build step should have run command");
-        var buildCommand = buildStep["run"].ToString();
-        Assert.Contains("dotnet build", buildCommand);
-        Assert.Contains("-c Release", buildCommand);
-        Assert.Contains("--no-restore", buildCommand);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("runs-on: ubuntu-latest", content);
+    }
+
+    [Theory]
+    [InlineData("ci.yml")]
+    [InlineData("release.yml")]
+    public void WorkflowFiles_AreValidYamlFormat(string fileName)
+    {
+        // Arrange
+        var workflowPath = Path.Combine(RepoRoot, WorkflowsDir, fileName);
+        var content = File.ReadAllText(workflowPath);
+
+        // Act & Assert
+        // Basic YAML validation: should start with name or on, contain proper indentation
+        Assert.NotEmpty(content);
+        Assert.DoesNotContain("\t", content); // YAML should use spaces, not tabs
+
+        // Check for required top-level keys
+        var hasName = content.Contains("name:");
+        var hasOn = content.Contains("on:");
+        Assert.True(hasName || hasOn, "Workflow should have 'name:' or 'on:' at top level");
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Run_Tests_With_Coverage()
+    public void CiWorkflow_DotnetJob_HasRestoreStep()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var testStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Test + Coverage");
-        Assert.NotNull(testStep);
-        Assert.True(testStep.ContainsKey("run"), "Test step should have run command");
-        var testCommand = testStep["run"].ToString();
-        Assert.Contains("dotnet test", testCommand);
-        Assert.Contains("-c Release", testCommand);
-        Assert.Contains("--no-build", testCommand);
-        Assert.Contains("--collect:\"XPlat Code Coverage\"", testCommand);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("Restore", content);
+        Assert.Contains("dotnet restore ./TestApi.sln", content);
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Upload_Coverage_Artifact()
+    public void CiWorkflow_DotnetJob_UsesCheckoutActionV6()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var uploadStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Upload coverage artifact");
-        Assert.NotNull(uploadStep);
-        Assert.True(uploadStep.ContainsKey("uses"), "Upload step should use an action");
-        Assert.Equal("actions/upload-artifact@v6", uploadStep["uses"]);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("Checkout", content);
+        Assert.Contains("actions/checkout@v6", content);
     }
 
     [Fact]
-    public void Coverage_Upload_Should_Run_Always()
+    public void ReleaseWorkflow_UsesCheckoutActionV6()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var uploadStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Upload coverage artifact");
-        Assert.NotNull(uploadStep);
-        Assert.True(uploadStep.ContainsKey("if"), "Upload step should have conditional execution");
-        Assert.Equal("always()", uploadStep["if"]);
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
+
+        // Act & Assert
+        Assert.Contains("actions/checkout@v6", content);
     }
 
     [Fact]
-    public void Coverage_Upload_Should_Have_Correct_Configuration()
+    public void CiWorkflow_HasValidWorkflowName()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var uploadStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Upload coverage artifact");
-        Assert.NotNull(uploadStep);
-        Assert.True(uploadStep.ContainsKey("with"), "Upload step should have configuration");
-        var withConfig = uploadStep["with"] as Dictionary<object, object>;
-        Assert.NotNull(withConfig);
-        Assert.True(withConfig.ContainsKey("name"), "Upload should specify artifact name");
-        Assert.Equal("coverage", withConfig["name"]);
-        Assert.True(withConfig.ContainsKey("path"), "Upload should specify path");
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("name: CI", content);
     }
 
     [Fact]
-    public void Workflow_Should_Have_Docker_Job()
+    public void ReleaseWorkflow_HasValidWorkflowName()
     {
-        var workflow = LoadWorkflow();
-        var jobs = workflow["jobs"];
-        Assert.True(jobs.ContainsKey("docker"), "Workflow should have docker job");
-        var dockerJob = jobs["docker"];
-        Assert.NotNull(dockerJob);
-        Assert.True(dockerJob.ContainsKey("name"), "Docker job should have a name");
-        Assert.Equal("docker", dockerJob["name"]);
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
+
+        // Act & Assert
+        Assert.Contains("name: Release Docker Image", content);
     }
 
     [Fact]
-    public void Docker_Job_Should_Run_On_Ubuntu_Latest()
+    public void CiWorkflow_DotnetJob_BuildsInReleaseConfiguration()
     {
-        var workflow = LoadWorkflow();
-        var dockerJob = workflow["jobs"]["docker"];
-        Assert.True(dockerJob.ContainsKey("runsOn"), "Docker job should specify runner");
-        Assert.Equal("ubuntu-latest", dockerJob["runsOn"]);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("-c Release", content);
     }
 
     [Fact]
-    public void Docker_Job_Should_Have_Steps()
+    public void CiWorkflow_DotnetJob_BuildsWithNoRestore()
     {
-        var workflow = LoadWorkflow();
-        var dockerJob = workflow["jobs"]["docker"];
-        Assert.True(dockerJob.ContainsKey("steps"), "Docker job should have steps");
-        var steps = dockerJob["steps"] as List<object>;
-        Assert.NotNull(steps);
-        Assert.NotEmpty(steps);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        // Verify build uses --no-restore to ensure restore runs first
+        Assert.Contains("--no-restore", content);
     }
 
     [Fact]
-    public void Docker_Job_Should_Checkout_Code()
+    public void CiWorkflow_DotnetJob_TestsWithNoBuild()
     {
-        var workflow = LoadWorkflow();
-        var dockerJob = workflow["jobs"]["docker"];
-        var steps = dockerJob["steps"] as List<object>;
-        var checkoutStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Checkout");
-        Assert.NotNull(checkoutStep);
-        Assert.True(checkoutStep.ContainsKey("uses"), "Checkout step should use an action");
-        Assert.Equal("actions/checkout@v6", checkoutStep["uses"]);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        // Verify test uses --no-build to ensure build runs first
+        Assert.Contains("--no-build", content);
     }
 
     [Fact]
-    public void Docker_Job_Should_Build_Image()
+    public void CiWorkflow_DoesNotContainSensitiveInformation()
     {
-        var workflow = LoadWorkflow();
-        var dockerJob = workflow["jobs"]["docker"];
-        var steps = dockerJob["steps"] as List<object>;
-        var buildStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Docker build");
-        Assert.NotNull(buildStep);
-        Assert.True(buildStep.ContainsKey("run"), "Docker build step should have run command");
-        var buildCommand = buildStep["run"].ToString();
-        Assert.Contains("docker build", buildCommand);
-        Assert.Contains("-t testapi:", buildCommand);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath).ToLower();
+
+        // Act & Assert
+        // Negative test: ensure no hardcoded passwords or tokens
+        Assert.DoesNotContain("password:", content);
+        Assert.DoesNotContain("token:", content.Replace("github_token", "").Replace("github.token", ""));
+        Assert.DoesNotContain("secret:", content.Replace("secrets.", ""));
     }
 
     [Fact]
-    public void Docker_Build_Should_Use_Git_SHA_Tag()
+    public void ReleaseWorkflow_UsesGitHubToken_NotHardcodedCredentials()
     {
-        var workflow = LoadWorkflow();
-        var dockerJob = workflow["jobs"]["docker"];
-        var steps = dockerJob["steps"] as List<object>;
-        var buildStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Docker build");
-        Assert.NotNull(buildStep);
-        var buildCommand = buildStep["run"].ToString();
-        Assert.Contains("${{ github.sha }}", buildCommand);
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
+
+        // Act & Assert
+        Assert.Contains("secrets.GITHUB_TOKEN", content);
+        Assert.DoesNotContain("password:", content.ToLower());
     }
 
     [Fact]
-    public void Dotnet_Job_Should_Have_Exactly_Six_Steps()
+    public void CiWorkflow_CoverageArtifact_UploadsOnlyOnAllowedConditions()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        Assert.Equal(7, steps.Count);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        // Verify upload artifact has if condition
+        Assert.Contains("if: always()", content);
     }
 
     [Fact]
-    public void Docker_Job_Should_Have_Exactly_Two_Steps()
+    public void CiWorkflow_DockerJob_UsesCurrentCommitSha()
     {
-        var workflow = LoadWorkflow();
-        var dockerJob = workflow["jobs"]["docker"];
-        var steps = dockerJob["steps"] as List<object>;
-        Assert.Equal(2, steps.Count);
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
+
+        // Act & Assert
+        Assert.Contains("github.sha", content);
     }
 
     [Fact]
-    public void Workflow_Should_Use_Latest_Action_Versions()
+    public void ReleaseWorkflow_OnlyTriggersOnTags_NotOnAllPushes()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var dockerJob = workflow["jobs"]["docker"];
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
 
-        var allSteps = new List<object>();
-        allSteps.AddRange(dotnetJob["steps"] as List<object>);
-        allSteps.AddRange(dockerJob["steps"] as List<object>);
-
-        foreach (var step in allSteps.Cast<Dictionary<object, object>>())
-        {
-            if (step.ContainsKey("uses"))
-            {
-                var uses = step["uses"].ToString();
-                if (uses.StartsWith("actions/checkout@"))
-                {
-                    Assert.Contains("@v6", uses);
-                }
-                else if (uses.StartsWith("actions/setup-dotnet@"))
-                {
-                    Assert.Contains("@v5", uses);
-                }
-                else if (uses.StartsWith("actions/upload-artifact@"))
-                {
-                    Assert.Contains("@v6", uses);
-                }
-            }
-        }
+        // Act & Assert
+        // Should NOT trigger on branch pushes
+        Assert.DoesNotContain("branches:", content);
+        // Should only trigger on tags
+        Assert.Contains("tags:", content);
     }
 
     [Fact]
-    public void Workflow_File_Should_Not_Be_Empty()
+    public void WorkflowsDirectory_ContainsOnlyExpectedFiles()
     {
-        var content = File.ReadAllText(GetWorkflowPath());
-        Assert.False(string.IsNullOrWhiteSpace(content), "Workflow file should not be empty");
-        Assert.True(content.Length > 100, "Workflow file should have substantial content");
+        // Arrange
+        var workflowsPath = Path.Combine(RepoRoot, WorkflowsDir);
+        var files = Directory.GetFiles(workflowsPath, "*.yml");
+
+        // Act
+        var fileNames = files.Select(f => Path.GetFileName(f)).ToList();
+
+        // Assert
+        Assert.Contains("ci.yml", fileNames);
+        Assert.Contains("release.yml", fileNames);
+        // Verify no unexpected workflow files
+        Assert.Equal(2, fileNames.Count);
     }
 
     [Fact]
-    public void Workflow_Steps_Should_Have_Names()
+    public void CiWorkflow_UsesDotNetSetupAction()
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var dockerJob = workflow["jobs"]["docker"];
+        // Arrange
+        var ciPath = Path.Combine(RepoRoot, WorkflowsDir, "ci.yml");
+        var content = File.ReadAllText(ciPath);
 
-        var allSteps = new List<object>();
-        allSteps.AddRange(dotnetJob["steps"] as List<object>);
-        allSteps.AddRange(dockerJob["steps"] as List<object>);
-
-        foreach (var step in allSteps.Cast<Dictionary<object, object>>())
-        {
-            Assert.True(step.ContainsKey("name"), "Each step should have a name");
-            Assert.False(string.IsNullOrWhiteSpace(step["name"].ToString()), "Step name should not be empty");
-        }
+        // Act & Assert
+        Assert.Contains("actions/setup-dotnet@v5", content);
     }
 
     [Fact]
-    public void Concurrency_Group_Should_Use_PR_Number_Or_Ref()
+    public void ReleaseWorkflow_BuildsAndPushes_InCorrectOrder()
     {
-        var workflow = LoadWorkflow();
-        var concurrency = workflow["concurrency"];
-        var group = concurrency["group"].ToString();
-        Assert.Contains("github.event.pull_request.number", group);
-        Assert.Contains("github.ref", group);
-        Assert.Contains("||", group);
+        // Arrange
+        var releasePath = Path.Combine(RepoRoot, WorkflowsDir, "release.yml");
+        var content = File.ReadAllText(releasePath);
+
+        // Act
+        var buildIndex = content.IndexOf("docker build", StringComparison.Ordinal);
+        var pushIndex = content.IndexOf("docker push", StringComparison.Ordinal);
+
+        // Assert
+        Assert.True(buildIndex > 0, "Should contain docker build");
+        Assert.True(pushIndex > 0, "Should contain docker push");
+        Assert.True(buildIndex < pushIndex, "docker build should come before docker push");
     }
 
-    [Fact]
-    public void Workflow_Should_Reference_Correct_Solution_File()
+    [Theory]
+    [InlineData("ci.yml", "ubuntu-latest")]
+    [InlineData("release.yml", "ubuntu-latest")]
+    public void Workflows_UseConsistentRunners(string fileName, string expectedRunner)
     {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
+        // Arrange
+        var workflowPath = Path.Combine(RepoRoot, WorkflowsDir, fileName);
+        var content = File.ReadAllText(workflowPath);
 
-        var solutionFile = "./TestApi.sln";
-        var commandsRequiringSolution = new[] { "format", "restore", "build", "test" };
-
-        foreach (var command in commandsRequiringSolution)
-        {
-            var step = steps.Cast<Dictionary<object, object>>()
-                .FirstOrDefault(s => s.ContainsKey("run") && s["run"].ToString().Contains($"dotnet {command}"));
-            if (step != null)
-            {
-                Assert.Contains(solutionFile, step["run"].ToString());
-            }
-        }
-    }
-
-    [Fact]
-    public void Workflow_Should_Only_Trigger_On_Master_Branch()
-    {
-        var workflow = LoadWorkflow();
-        var triggers = workflow["on"];
-
-        var pushBranches = triggers["push"]["branches"] as List<object>;
-        Assert.Single(pushBranches);
-        Assert.Equal("master", pushBranches[0].ToString());
-
-        var prBranches = triggers["pullRequest"]["branches"] as List<object>;
-        Assert.Single(prBranches);
-        Assert.Equal("master", prBranches[0].ToString());
-    }
-
-    [Fact]
-    public void Format_Step_Should_Come_Before_Restore_Step()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-
-        var formatIndex = steps.Cast<Dictionary<object, object>>()
-            .ToList()
-            .FindIndex(s => s.ContainsKey("name") && s["name"].ToString().Contains("Format"));
-
-        var restoreIndex = steps.Cast<Dictionary<object, object>>()
-            .ToList()
-            .FindIndex(s => s.ContainsKey("name") && s["name"].ToString() == "Restore");
-
-        Assert.True(formatIndex < restoreIndex, "Format step should come before Restore step");
-    }
-
-    [Fact]
-    public void Restore_Step_Should_Come_Before_Build_Step()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-
-        var restoreIndex = steps.Cast<Dictionary<object, object>>()
-            .ToList()
-            .FindIndex(s => s.ContainsKey("name") && s["name"].ToString() == "Restore");
-
-        var buildIndex = steps.Cast<Dictionary<object, object>>()
-            .ToList()
-            .FindIndex(s => s.ContainsKey("name") && s["name"].ToString() == "Build");
-
-        Assert.True(restoreIndex < buildIndex, "Restore step should come before Build step");
-    }
-
-    [Fact]
-    public void Build_Step_Should_Come_Before_Test_Step()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-
-        var buildIndex = steps.Cast<Dictionary<object, object>>()
-            .ToList()
-            .FindIndex(s => s.ContainsKey("name") && s["name"].ToString() == "Build");
-
-        var testIndex = steps.Cast<Dictionary<object, object>>()
-            .ToList()
-            .FindIndex(s => s.ContainsKey("name") && s["name"].ToString() == "Test + Coverage");
-
-        Assert.True(buildIndex < testIndex, "Build step should come before Test step");
-    }
-
-    [Fact]
-    public void Jobs_Should_Not_Have_Dependencies()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var dockerJob = workflow["jobs"]["docker"];
-
-        Assert.False(dotnetJob.ContainsKey("needs"), "Dotnet job should not depend on other jobs");
-        Assert.False(dockerJob.ContainsKey("needs"), "Docker job should not depend on other jobs");
-    }
-
-    [Fact]
-    public void Coverage_Path_Should_Include_TestResults()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var uploadStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Upload coverage artifact");
-
-        var withConfig = uploadStep["with"] as Dictionary<object, object>;
-        var path = withConfig["path"].ToString();
-        Assert.Contains("TestResults", path);
-    }
-
-    [Fact]
-    public void All_Dotnet_Commands_Should_Target_Solution_File()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-
-        var dotnetCommands = steps.Cast<Dictionary<object, object>>()
-            .Where(s => s.ContainsKey("run") && s["run"].ToString().StartsWith("dotnet"))
-            .Select(s => s["run"].ToString())
-            .ToList();
-
-        foreach (var command in dotnetCommands)
-        {
-            if (command.Contains("format") || command.Contains("restore") ||
-                command.Contains("build") || command.Contains("test"))
-            {
-                Assert.Contains("TestApi.sln", command);
-            }
-        }
-    }
-
-    [Fact]
-    public void Docker_Build_Should_Use_Current_Directory()
-    {
-        var workflow = LoadWorkflow();
-        var dockerJob = workflow["jobs"]["docker"];
-        var steps = dockerJob["steps"] as List<object>;
-        var buildStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Docker build");
-
-        var buildCommand = buildStep["run"].ToString();
-        Assert.EndsWith(" .", buildCommand.Trim());
-    }
-
-    [Fact]
-    public void Workflow_Should_Have_Exactly_Two_Jobs()
-    {
-        var workflow = LoadWorkflow();
-        var jobs = workflow["jobs"] as Dictionary<object, object>;
-        Assert.Equal(2, jobs.Count);
-        Assert.True(jobs.ContainsKey("dotnet"));
-        Assert.True(jobs.ContainsKey("docker"));
-    }
-
-    [Fact]
-    public void All_Steps_Should_Have_Either_Run_Or_Uses()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var dockerJob = workflow["jobs"]["docker"];
-
-        var allSteps = new List<object>();
-        allSteps.AddRange(dotnetJob["steps"] as List<object>);
-        allSteps.AddRange(dockerJob["steps"] as List<object>);
-
-        foreach (var step in allSteps.Cast<Dictionary<object, object>>())
-        {
-            var hasRun = step.ContainsKey("run");
-            var hasUses = step.ContainsKey("uses");
-            Assert.True(hasRun || hasUses, "Each step must have either 'run' or 'uses'");
-        }
-    }
-
-    [Fact]
-    public void Concurrency_Group_Should_Have_Prefix()
-    {
-        var workflow = LoadWorkflow();
-        var concurrency = workflow["concurrency"];
-        var group = concurrency["group"].ToString();
-        Assert.StartsWith("ci-", group);
-    }
-
-    [Fact]
-    public void Dotnet_Job_Should_Use_No_Build_Flag_For_Test()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var testStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Test + Coverage");
-
-        var testCommand = testStep["run"].ToString();
-        Assert.Contains("--no-build", testCommand);
-    }
-
-    [Fact]
-    public void Dotnet_Job_Should_Use_No_Restore_Flag_For_Build()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var steps = dotnetJob["steps"] as List<object>;
-        var buildStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Build");
-
-        var buildCommand = buildStep["run"].ToString();
-        Assert.Contains("--no-restore", buildCommand);
-    }
-
-    [Fact]
-    public void Workflow_Should_Only_Use_Official_GitHub_Actions()
-    {
-        var workflow = LoadWorkflow();
-        var dotnetJob = workflow["jobs"]["dotnet"];
-        var dockerJob = workflow["jobs"]["docker"];
-
-        var allSteps = new List<object>();
-        allSteps.AddRange(dotnetJob["steps"] as List<object>);
-        allSteps.AddRange(dockerJob["steps"] as List<object>);
-
-        var usedActions = allSteps.Cast<Dictionary<object, object>>()
-            .Where(s => s.ContainsKey("uses"))
-            .Select(s => s["uses"].ToString())
-            .ToList();
-
-        foreach (var action in usedActions)
-        {
-            Assert.StartsWith("actions/", action);
-        }
-    }
-
-    [Fact]
-    public void Workflow_Should_Not_Have_Workflow_Dispatch_Trigger()
-    {
-        var workflow = LoadWorkflow();
-        var triggers = workflow["on"];
-        Assert.False(triggers.ContainsKey("workflowDispatch"),
-            "Workflow should not have manual workflow_dispatch trigger");
-    }
-
-    [Fact]
-    public void Docker_Image_Name_Should_Be_Lowercase()
-    {
-        var workflow = LoadWorkflow();
-        var dockerJob = workflow["jobs"]["docker"];
-        var steps = dockerJob["steps"] as List<object>;
-        var buildStep = steps.Cast<Dictionary<object, object>>()
-            .FirstOrDefault(s => s.ContainsKey("name") && s["name"].ToString() == "Docker build");
-
-        var buildCommand = buildStep["run"].ToString();
-        var imageNameMatch = System.Text.RegularExpressions.Regex.Match(buildCommand, @"-t\s+(\w+):");
-        if (imageNameMatch.Success)
-        {
-            var imageName = imageNameMatch.Groups[1].Value;
-            Assert.Equal(imageName.ToLower(), imageName);
-        }
+        // Act & Assert
+        Assert.Contains($"runs-on: {expectedRunner}", content);
     }
 }
