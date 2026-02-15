@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Elastic.Apm.NetCoreAll;
 using Serilog;
 using Serilog.Events;
@@ -98,6 +99,7 @@ finally
     Log.CloseAndFlush();
 }
 
+[ExcludeFromCodeCoverage]
 public partial class Program
 {
     private static readonly string[] Summaries =
@@ -135,6 +137,7 @@ public partial class Program
 /// <param name="Date">The date of the forecast.</param>
 /// <param name="TemperatureC">Temperature in Celsius.</param>
 /// <param name="Summary">Weather condition summary (e.g., "Mild", "Warm").</param>
+[ExcludeFromCodeCoverage]
 public record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     /// <summary>
