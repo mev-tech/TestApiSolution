@@ -30,6 +30,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+        required: false
 
   # --- Seq (lightweight structured log viewer) ---
   # Usage: docker compose --profile seq up
