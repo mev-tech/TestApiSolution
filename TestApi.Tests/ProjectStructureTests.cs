@@ -6,11 +6,19 @@ namespace TestApi.Tests;
 /// </summary>
 public class ProjectStructureTests
 {
+    private static string GetSolutionRoot()
+    {
+        var assemblyLocation = typeof(ProjectStructureTests).Assembly.Location;
+        var assemblyDir = Path.GetDirectoryName(assemblyLocation)!;
+        // Navigate from TestApi.Tests/bin/Release/net8.0 to solution root (4 levels up)
+        return Path.GetFullPath(Path.Combine(assemblyDir, "..", "..", "..", ".."));
+    }
+
     [Fact]
     public void Dockerfile_ShouldExist()
     {
         // Arrange
-        var dockerfilePath = "../../../Dockerfile";
+        var dockerfilePath = Path.Combine(GetSolutionRoot(), "Dockerfile");
 
         // Act & Assert
         Assert.True(File.Exists(dockerfilePath), "Dockerfile should exist in the project root");
@@ -20,7 +28,7 @@ public class ProjectStructureTests
     public void DockerCompose_ShouldExist()
     {
         // Arrange
-        var dockerComposePath = "../../../docker-compose.yml";
+        var dockerComposePath = Path.Combine(GetSolutionRoot(), "docker-compose.yml");
 
         // Act & Assert
         Assert.True(File.Exists(dockerComposePath), "docker-compose.yml should exist in the project root");
@@ -30,7 +38,7 @@ public class ProjectStructureTests
     public void ReadMe_ShouldExist()
     {
         // Arrange
-        var readmePath = "../../../README.md";
+        var readmePath = Path.Combine(GetSolutionRoot(), "README.md");
 
         // Act & Assert
         Assert.True(File.Exists(readmePath), "README.md should exist in the project root");
@@ -40,7 +48,7 @@ public class ProjectStructureTests
     public void CiWorkflowDirectory_ShouldExist()
     {
         // Arrange
-        var workflowDir = "../../../.github/workflows";
+        var workflowDir = Path.Combine(GetSolutionRoot(), ".github", "workflows");
 
         // Act & Assert
         Assert.True(Directory.Exists(workflowDir), ".github/workflows directory should exist");
@@ -50,7 +58,7 @@ public class ProjectStructureTests
     public void CiWorkflow_ShouldExist()
     {
         // Arrange
-        var ciPath = "../../../.github/workflows/ci.yml";
+        var ciPath = Path.Combine(GetSolutionRoot(), ".github", "workflows", "ci.yml");
 
         // Act & Assert
         Assert.True(File.Exists(ciPath), "CI workflow should exist");
@@ -60,7 +68,7 @@ public class ProjectStructureTests
     public void ReleaseWorkflow_ShouldExist()
     {
         // Arrange
-        var releasePath = "../../../.github/workflows/release.yml";
+        var releasePath = Path.Combine(GetSolutionRoot(), ".github", "workflows", "release.yml");
 
         // Act & Assert
         Assert.True(File.Exists(releasePath), "Release workflow should exist");
@@ -70,7 +78,7 @@ public class ProjectStructureTests
     public void MainApiProject_ShouldExist()
     {
         // Arrange
-        var apiProjectPath = "../../../TestApi/TestApi.csproj";
+        var apiProjectPath = Path.Combine(GetSolutionRoot(), "TestApi", "TestApi.csproj");
 
         // Act & Assert
         Assert.True(File.Exists(apiProjectPath), "Main API project file should exist");
@@ -80,7 +88,7 @@ public class ProjectStructureTests
     public void ProgramCs_ShouldExist()
     {
         // Arrange
-        var programPath = "../../../TestApi/Program.cs";
+        var programPath = Path.Combine(GetSolutionRoot(), "TestApi", "Program.cs");
 
         // Act & Assert
         Assert.True(File.Exists(programPath), "Program.cs should exist in the API project");
@@ -90,7 +98,7 @@ public class ProjectStructureTests
     public void AppSettings_ShouldExist()
     {
         // Arrange
-        var appSettingsPath = "../../../TestApi/appsettings.json";
+        var appSettingsPath = Path.Combine(GetSolutionRoot(), "TestApi", "appsettings.json");
 
         // Act & Assert
         Assert.True(File.Exists(appSettingsPath), "appsettings.json should exist");
@@ -100,7 +108,7 @@ public class ProjectStructureTests
     public void DependabotConfig_ShouldExist()
     {
         // Arrange
-        var dependabotPath = "../../../.github/dependabot.yml";
+        var dependabotPath = Path.Combine(GetSolutionRoot(), ".github", "dependabot.yml");
 
         // Act & Assert
         Assert.True(File.Exists(dependabotPath), "dependabot.yml should exist for automated updates");
@@ -110,7 +118,7 @@ public class ProjectStructureTests
     public void ScriptsDirectory_ShouldExist()
     {
         // Arrange
-        var scriptsDir = "../../../.github/scripts";
+        var scriptsDir = Path.Combine(GetSolutionRoot(), ".github", "scripts");
 
         // Act & Assert
         Assert.True(Directory.Exists(scriptsDir), ".github/scripts directory should exist");
@@ -120,7 +128,7 @@ public class ProjectStructureTests
     public void CreateRulesetsScript_ShouldExist()
     {
         // Arrange
-        var scriptPath = "../../../.github/scripts/create-rulesets.sh";
+        var scriptPath = Path.Combine(GetSolutionRoot(), ".github", "scripts", "create-rulesets.sh");
 
         // Act & Assert
         Assert.True(File.Exists(scriptPath), "create-rulesets.sh script should exist");
@@ -130,7 +138,7 @@ public class ProjectStructureTests
     public void ReadMe_ShouldNotBeEmpty()
     {
         // Arrange
-        var readmePath = "../../../README.md";
+        var readmePath = Path.Combine(GetSolutionRoot(), "README.md");
 
         // Act
         var content = File.ReadAllText(readmePath);
@@ -158,7 +166,7 @@ public class ProjectStructureTests
     public void DockerCompose_ShouldContainApiService()
     {
         // Arrange
-        var dockerComposePath = "../../../docker-compose.yml";
+        var dockerComposePath = Path.Combine(GetSolutionRoot(), "docker-compose.yml");
 
         // Act
         var content = File.ReadAllText(dockerComposePath);
@@ -171,7 +179,7 @@ public class ProjectStructureTests
     public void DockerCompose_ShouldContainDatabaseService()
     {
         // Arrange
-        var dockerComposePath = "../../../docker-compose.yml";
+        var dockerComposePath = Path.Combine(GetSolutionRoot(), "docker-compose.yml");
 
         // Act
         var content = File.ReadAllText(dockerComposePath);
@@ -185,7 +193,7 @@ public class ProjectStructureTests
     public void ProgramCs_ShouldContainWeatherForecastEndpoint()
     {
         // Arrange
-        var programPath = "../../../TestApi/Program.cs";
+        var programPath = Path.Combine(GetSolutionRoot(), "TestApi", "Program.cs");
 
         // Act
         var content = File.ReadAllText(programPath);
@@ -199,7 +207,7 @@ public class ProjectStructureTests
     public void ProgramCs_ShouldContainSwaggerConfiguration()
     {
         // Arrange
-        var programPath = "../../../TestApi/Program.cs";
+        var programPath = Path.Combine(GetSolutionRoot(), "TestApi", "Program.cs");
 
         // Act
         var content = File.ReadAllText(programPath);
@@ -213,7 +221,7 @@ public class ProjectStructureTests
     public void TestProject_ShouldTargetNet80()
     {
         // Arrange
-        var testProjectPath = "../TestApi.Tests.csproj";
+        var testProjectPath = Path.Combine(GetSolutionRoot(), "TestApi.Tests", "TestApi.Tests.csproj");
 
         // Act
         var content = File.ReadAllText(testProjectPath);
@@ -226,7 +234,7 @@ public class ProjectStructureTests
     public void TestProject_ShouldHaveNullableEnabled()
     {
         // Arrange
-        var testProjectPath = "../TestApi.Tests.csproj";
+        var testProjectPath = Path.Combine(GetSolutionRoot(), "TestApi.Tests", "TestApi.Tests.csproj");
 
         // Act
         var content = File.ReadAllText(testProjectPath);

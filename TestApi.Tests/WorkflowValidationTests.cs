@@ -4,8 +4,16 @@ namespace TestApi.Tests;
 
 public class WorkflowValidationTests
 {
-    private const string CiWorkflowPath = "../../../.github/workflows/ci.yml";
-    private const string ReleaseWorkflowPath = "../../../.github/workflows/release.yml";
+    private static string GetSolutionRoot()
+    {
+        var assemblyLocation = typeof(WorkflowValidationTests).Assembly.Location;
+        var assemblyDir = Path.GetDirectoryName(assemblyLocation)!;
+        // Navigate from TestApi.Tests/bin/Release/net8.0 to solution root (4 levels up)
+        return Path.GetFullPath(Path.Combine(assemblyDir, "..", "..", "..", ".."));
+    }
+
+    private static string CiWorkflowPath => Path.Combine(GetSolutionRoot(), ".github", "workflows", "ci.yml");
+    private static string ReleaseWorkflowPath => Path.Combine(GetSolutionRoot(), ".github", "workflows", "release.yml");
 
     [Fact]
     public void CiWorkflow_ShouldExist()
