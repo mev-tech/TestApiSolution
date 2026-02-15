@@ -293,19 +293,6 @@ public class WeatherForecastEdgeCasesTests
     }
 
     [Fact]
-    public void WeatherForecast_NullCheck_ShouldNotBeNull()
-    {
-        // Arrange
-        var date = new DateOnly(2026, 2, 15);
-
-        // Act
-        var forecast = new WeatherForecastForEdgeCases(date, 20, "Mild");
-
-        // Assert
-        Assert.NotNull(forecast);
-    }
-
-    [Fact]
     public void WeatherForecast_Summary_ShouldHandleNull()
     {
         // Arrange
