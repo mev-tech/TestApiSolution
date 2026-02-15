@@ -10,6 +10,7 @@ down() {
 
 case "$STACK" in
   seq)
+    export LOGGING_SINK=seq
     echo "Starting: db + api + Seq + Portainer"
     echo "  API:       http://localhost:8000"
     echo "  Seq:       http://localhost:8081"
@@ -17,6 +18,7 @@ case "$STACK" in
     docker compose --profile seq up --build -d
     ;;
   elk)
+    export LOGGING_SINK=elk
     echo "Starting: db + api + Elasticsearch + Kibana + Portainer"
     echo "  API:       http://localhost:8000"
     echo "  Kibana:    http://localhost:5601"
@@ -24,6 +26,7 @@ case "$STACK" in
     docker compose --profile elk up --build -d
     ;;
   apm)
+    export LOGGING_SINK=elk
     echo "Starting: db + api + Elasticsearch + Kibana + APM Server + Portainer"
     echo "  API:       http://localhost:8000"
     echo "  Kibana:    http://localhost:5601"
@@ -32,6 +35,7 @@ case "$STACK" in
     docker compose --profile elk --profile apm up --build -d
     ;;
   all)
+    export LOGGING_SINK=seq
     echo "Starting: everything"
     echo "  API:       http://localhost:8000"
     echo "  Seq:       http://localhost:8081"

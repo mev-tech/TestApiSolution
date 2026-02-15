@@ -24,8 +24,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: Host=db;Port=5432;Database=appdb;Username=app;Password=app
-      # Set to "seq" or "elk" to activate a logging sink (match the profile you start)
-      LoggingSink: seq
+      LoggingSink: ${LOGGING_SINK:-seq}
       Seq__ServerUrl: http://seq:5341
       Elasticsearch__Url: http://elasticsearch:9200
     depends_on:
