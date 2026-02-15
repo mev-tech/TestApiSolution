@@ -24,6 +24,6 @@ RUN dotnet publish ./TestApi/TestApi.csproj -c Release -o /app/publish --no-rest
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app/publish .
-ENV ASPNETCORE_URLS=http://0.0.0.0:8080
-EXPOSE 8080
+ENV ASPNETCORE_URLS=http://0.0.0.0:8000
+EXPOSE 8000
 ENTRYPOINT ["dotnet", "TestApi.dll"]

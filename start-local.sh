@@ -11,21 +11,21 @@ down() {
 case "$STACK" in
   seq)
     echo "Starting: db + api + Seq + Portainer"
-    echo "  API:       http://localhost:8080"
+    echo "  API:       http://localhost:8000"
     echo "  Seq:       http://localhost:8081"
     echo "  Portainer: http://localhost:9000"
     docker compose --profile seq up --build -d
     ;;
   elk)
     echo "Starting: db + api + Elasticsearch + Kibana + Portainer"
-    echo "  API:       http://localhost:8080"
+    echo "  API:       http://localhost:8000"
     echo "  Kibana:    http://localhost:5601"
     echo "  Portainer: http://localhost:9000"
     docker compose --profile elk up --build -d
     ;;
   apm)
     echo "Starting: db + api + Elasticsearch + Kibana + APM Server + Portainer"
-    echo "  API:       http://localhost:8080"
+    echo "  API:       http://localhost:8000"
     echo "  Kibana:    http://localhost:5601"
     echo "  APM:       http://localhost:8200"
     echo "  Portainer: http://localhost:9000"
@@ -33,7 +33,7 @@ case "$STACK" in
     ;;
   all)
     echo "Starting: everything"
-    echo "  API:       http://localhost:8080"
+    echo "  API:       http://localhost:8000"
     echo "  Seq:       http://localhost:8081"
     echo "  Kibana:    http://localhost:5601"
     echo "  APM:       http://localhost:8200"
