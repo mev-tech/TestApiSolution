@@ -10,3 +10,6 @@
 **/TestResults/
 *.coverage
 *.opencover.xml
+
+# Lambda publish artifacts
+**/publish/

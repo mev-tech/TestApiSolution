@@ -5,6 +5,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -14,11 +16,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Skip HTTPS redirect on Lambda — API Gateway handles TLS termination
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_LAMBDA_FUNCTION_NAME")))
+{
+    app.UseHttpsRedirection();
+}
 
 app.MapGet("/weatherforecast", GetWeatherForecast)
     .WithName("GetWeatherForecast")
     .WithOpenApi();
+
+app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
 app.Run();
 
