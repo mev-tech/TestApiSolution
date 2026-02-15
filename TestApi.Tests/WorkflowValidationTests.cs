@@ -636,11 +636,8 @@ public class WorkflowValidationTests
         Assert.Contains("--no-restore", buildCommand);
     }
 
-    [Theory]
-    [InlineData("actions/checkout")]
-    [InlineData("actions/setup-dotnet")]
-    [InlineData("actions/upload-artifact")]
-    public void Workflow_Should_Only_Use_Official_GitHub_Actions(string expectedAction)
+    [Fact]
+    public void Workflow_Should_Only_Use_Official_GitHub_Actions()
     {
         var workflow = LoadWorkflow();
         var dotnetJob = workflow["jobs"]["dotnet"];
