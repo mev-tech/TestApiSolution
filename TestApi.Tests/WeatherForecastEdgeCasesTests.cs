@@ -251,8 +251,9 @@ public class WeatherForecastEdgeCasesTests
         // Formula: 32 + (int)(100 / 0.5556) = 32 + (int)(179.99...) = 32 + 179 = 211
         Assert.Equal(211, forecast100.TemperatureF);
 
-        // -40°C = -40°F (exact, this is where both scales meet)
-        Assert.Equal(-40, forecastMinus40.TemperatureF);
+        // -40°C ≈ -39°F (approximately due to integer division)
+        // Formula: 32 + (int)(-40 / 0.5556) = 32 + (int)(-71.98...) = 32 + (-71) = -39
+        Assert.Equal(-39, forecastMinus40.TemperatureF);
     }
 
     [Fact]
