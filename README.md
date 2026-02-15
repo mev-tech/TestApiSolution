@@ -10,9 +10,11 @@ TestApi is a lightweight REST API that demonstrates modern ASP.NET Core developm
 
 - **Minimal APIs** — Lightweight endpoint definitions without traditional controllers
 - **Swagger/OpenAPI** — Interactive API documentation with Swagger UI
-- **Docker support** — Multi-stage Dockerfile and Docker Compose configuration
+- **Structured logging** — Serilog with switchable sinks (Seq, ELK+APM, CloudWatch)
+- **Docker support** — Multi-stage Dockerfile and Docker Compose configuration with profiles
 - **PostgreSQL integration** — Database infrastructure ready for use
-- **Comprehensive CI/CD** — GitHub Actions for automated testing, building, and Docker image deployment
+- **AWS Lambda** — Three environments (dev/staging/prod) deployed via GitHub Actions
+- **Comprehensive CI/CD** — GitHub Actions for automated testing, building, and deployment
 - **Automated code review** — CodeRabbit AI integration for PR reviews
 - **Dependency management** — Dependabot for automated security and feature updates
 - **Branch protection** — GitHub rulesets enforcing code quality on the master branch
@@ -24,7 +26,7 @@ TestApi is a lightweight REST API that demonstrates modern ASP.NET Core developm
 - **.NET 8.0** or later ([download](https://dotnet.microsoft.com/download))
 - **Docker & Docker Compose** (optional, for containerized development)
 
-### Running Locally
+### Running Locally (without Docker)
 
 ```bash
 # Restore dependencies
@@ -33,19 +35,52 @@ dotnet restore
 # Run the API
 dotnet run --project TestApi/TestApi.csproj
 
-# API will be available at https://localhost:5001
-# Swagger UI at https://localhost:5001/swagger
+# API will be available at http://localhost:5000
+# Swagger UI at http://localhost:5000/swagger
 ```
 
 ### Running with Docker Compose
 
-```bash
-# Start API + PostgreSQL
-docker-compose up
+Use the `start-local.sh` script to choose your logging stack:
 
-# API will be available at http://localhost:8080
-# PostgreSQL at localhost:5432
+```bash
+# Default: API + PostgreSQL + Seq (lightweight structured log viewer)
+./start-local.sh
+
+# Same as above, explicit
+./start-local.sh seq
+
+# ELK stack: API + PostgreSQL + Elasticsearch + Kibana
+./start-local.sh elk
+
+# ELK + APM: API + PostgreSQL + Elasticsearch + Kibana + APM Server
+./start-local.sh apm
+
+# Everything: all services (Seq + ELK + APM)
+./start-local.sh all
+
+# Stop all containers
+./start-local.sh down
+
+# Follow logs
+./start-local.sh logs
+
+# Restart with a specific stack (down + up)
+./restart-local.sh [seq|elk|apm|all]
 ```
+
+**Service URLs when running locally:**
+
+| Service   | URL                        | Profile    |
+|-----------|----------------------------|------------|
+| API       | http://localhost:8000      | always     |
+| Swagger   | http://localhost:8000/swagger | always  |
+| Seq       | http://localhost:8081      | `seq`      |
+| Kibana    | http://localhost:5601      | `elk`/`apm`|
+| APM Server| http://localhost:8200      | `apm`      |
+| Portainer | http://localhost:9000      | always     |
+
+> **Seq login:** admin / admin
 
 ## API Endpoints
 
@@ -69,26 +104,41 @@ Returns a 5-day weather forecast with random temperatures.
 ]
 ```
 
-**Parameters:** None
-
 **Status Codes:**
 - `200 OK` — Successfully retrieved forecast
+
+### Health Check
+
+```http
+GET /healthz
+```
+
+Returns `200 OK` with `{ "status": "healthy" }`. Used for liveness probes.
 
 ## Project Structure
 
 ```text
 TestApiSolution/
-├── TestApi/                    # Main API project
-│   ├── Program.cs              # Application entry point & endpoint definitions
-│   ├── appsettings.json        # Application configuration
-│   └── TestApi.http            # HTTP request examples
-├── TestApi.Tests/              # xUnit test project
+├── TestApi/                        # Main API project
+│   ├── Program.cs                  # Entry point, endpoints, Serilog setup
+│   ├── appsettings.json            # Base config (Console JSON sink)
+│   ├── appsettings.Development.json# Local dev (Seq/ELK URLs, Debug level)
+│   ├── appsettings.Staging.json    # Staging (CloudWatch via Console)
+│   ├── appsettings.Production.json # Production (CloudWatch via Console)
+│   ├── aws-lambda-tools-defaults.json # Lambda deploy defaults
+│   └── TestApi.http                # HTTP request examples
+├── TestApi.Tests/                  # xUnit test project
 ├── .github/
-│   ├── workflows/              # GitHub Actions CI/CD workflows
-│   ├── scripts/                # GitHub automation scripts
-│   └── dependabot.yml          # Dependency update automation
-├── Dockerfile                  # Multi-stage Docker build
-└── docker-compose.yml          # Local development stack
+│   ├── workflows/
+│   │   ├── ci.yml                  # Tests + coverage on every PR
+│   │   ├── deploy.yml              # Multi-env Lambda deploy
+│   │   ├── deploy-lambda.yml       # Reusable deploy workflow
+│   │   └── release.yml             # Docker image release on tag
+│   └── dependabot.yml              # Dependency update automation
+├── start-local.sh                  # Start Docker Compose with chosen logging stack
+├── restart-local.sh                # Restart local environment
+├── Dockerfile                      # Multi-stage Docker build
+└── docker-compose.yml              # Local development stack with profiles
 ```
 
 ## Development
@@ -134,7 +184,7 @@ dotnet test TestApi.sln -c Release --collect:"XPlat Code Coverage"
 **CI Coverage:**
 - Coverage reports are collected on every push to `master` and pull requests
 - Reports are available as CI artifacts in the Actions tab
-- 97 tests passing with comprehensive edge case coverage
+- 107 tests passing with comprehensive edge case coverage
 
 ### Making Changes
 
@@ -206,23 +256,34 @@ Dependabot automatically creates PRs for:
 
 Review and merge these PRs to keep dependencies fresh and secure.
 
+## Structured Logging
+
+Logging is powered by **Serilog** and the active sink is selected via the `LoggingSink` configuration key.
+
+| `LoggingSink` value | Sink | Use case |
+|---------------------|------|----------|
+| *(unset)*           | Console JSON | Lambda → CloudWatch Logs |
+| `seq`               | Seq at configured URL | Local dev (lightweight) |
+| `elk`               | Elasticsearch at configured URL | Local dev (full ELK) |
+
+The `start-local.sh` script sets `LoggingSink` automatically based on the profile you choose. Docker Compose reads it via `${LOGGING_SINK:-seq}`.
+
+**Manual override:**
+```bash
+# Force ELK sink without using the script
+LOGGING_SINK=elk docker compose --profile elk up
+```
+
 ## Configuration
 
 ### Application Settings
 
-Edit `TestApi/appsettings.json` for configuration:
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*"
-}
-```
+| File | Environment | Purpose |
+|------|-------------|---------|
+| `appsettings.json` | All | Base config, Console JSON sink |
+| `appsettings.Development.json` | Local | Debug level, Seq/ELK URLs |
+| `appsettings.Staging.json` | Lambda Staging | Information level, Console only |
+| `appsettings.Production.json` | Lambda Production | Warning level, Console only |
 
 ### Database Connection
 
@@ -240,7 +301,7 @@ Update `appsettings.json` to add a connection string when database integration i
 
 Customize `docker-compose.yml` to adjust:
 
-- API port (default: 8080)
+- API port (default: 8000)
 - Database credentials
 - Database name
 - Health check settings
@@ -278,30 +339,45 @@ docker build -t testapi:latest .
 Run:
 
 ```bash
-docker run -p 8080:8080 testapi:latest
+docker run -p 8000:8000 testapi:latest
 ```
 
-### AWS Lambda (Deployed ✅)
+### AWS Lambda (Multi-environment ✅)
 
-The API is deployed as an **AWS Lambda Function** with a public Function URL for serverless execution.
+The API is deployed as three **AWS Lambda Functions** — one per environment — each with a public Function URL.
 
-**Deployment Details:**
-- Automated deployment via GitHub Actions on push to `master`
+| Environment | Lambda function   | Trigger |
+|-------------|-------------------|---------|
+| Development | `TestApi-dev`     | Manual (`workflow_dispatch`) |
+| Staging     | `TestApi-staging` | Push to `master` |
+| Production  | `TestApi-prod`    | Push tag `v*.*.*` |
+
+**Details:**
 - Lambda runtime: .NET 8.0
 - Region: `eu-north-1`
-- Accessible via public Function URL
+- Logging: structured JSON to stdout → CloudWatch Logs (free tier)
+- Reusable deploy workflow in `.github/workflows/deploy-lambda.yml`
+
+**Trigger a manual dev deploy:**
+
+Go to Actions → "Deploy" → "Run workflow" → select environment `Development`.
+
+**Trigger a production release:**
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 **Required IAM Permissions for Deployment:**
 
-To deploy updates to Lambda, the IAM user needs these permissions:
-- `lambda:CreateFunction` — Create Lambda function
-- `lambda:UpdateFunctionCode` — Update function code
-- `lambda:UpdateFunctionConfiguration` — Update configuration
-- `lambda:CreateFunctionUrlConfig` — Create public Function URL
-- `lambda:UpdateFunctionUrlConfig` — Update Function URL config
-- `iam:PassRole` — Pass the Lambda execution role
+- `lambda:CreateFunction`
+- `lambda:UpdateFunctionCode`
+- `lambda:UpdateFunctionConfiguration`
+- `lambda:CreateFunctionUrlConfig`
+- `lambda:UpdateFunctionUrlConfig`
+- `iam:PassRole`
 
-**Note:** For public Function URLs on new AWS accounts, both `lambda:InvokeFunctionUrl` AND `lambda:InvokeFunction` permissions are required.
+**Note:** On AWS accounts created after October 2025, public Function URLs require both `lambda:InvokeFunctionUrl` AND `lambda:InvokeFunction` permissions on the resource policy.
 
 ### Production Considerations
 
@@ -316,12 +392,14 @@ For production deployment:
 
 ## Troubleshooting
 
-### "Port 8080 already in use"
+### "Port already in use"
 
-Change the port in `docker-compose.yml` or stop the conflicting container:
+Stop all local containers:
 
 ```bash
-docker-compose down
+./start-local.sh down
+# or
+docker compose --profile seq --profile elk --profile apm down
 ```
 
 ### "Connection refused" when connecting to database
@@ -329,7 +407,9 @@ docker-compose down
 Ensure PostgreSQL is healthy:
 
 ```bash
-docker-compose logs db
+./start-local.sh logs
+# or
+docker compose logs db
 ```
 
 Check that the container is running and health checks pass.

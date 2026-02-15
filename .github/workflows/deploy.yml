@@ -3,10 +3,22 @@ name: Deploy
 on:
   push:
     branches: ["master"]
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "Development"
+        type: choice
+        options:
+          - Development
+          - Staging
+          - Production
 
 concurrency:
-  group: deploy
+  group: deploy-${{ github.event.inputs.environment || (startsWith(github.ref, 'refs/tags/v') && 'Production' || 'Staging') }}
   cancel-in-progress: false
 
 permissions:
@@ -35,29 +47,41 @@ jobs:
       - name: Test
         run: dotnet test ./TestApi.sln -c Release --no-build
 
-  deploy:
-    name: deploy
+  # Deploy to dev: manual dispatch with Development selected
+  deploy-dev:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Development'
     needs: test
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/deploy-lambda.yml
+    with:
+      environment: Development
+      function-name: TestApi-dev
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+  # Deploy to staging: auto on push to master OR manual dispatch with Staging selected
+  deploy-staging:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/master') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Staging')
+    needs: test
+    uses: ./.github/workflows/deploy-lambda.yml
+    with:
+      environment: Staging
+      function-name: TestApi-staging
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@baa11fbfe1d6520db94683bd5c7a3818018e4309 # v5
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Install Lambda tools
-        run: dotnet tool install -g Amazon.Lambda.Tools
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Deploy to Lambda
-        run: dotnet lambda deploy-function TestApi --project-location TestApi
+  # Deploy to prod: auto on release tag (v*.*.*) OR manual dispatch with Production selected
+  deploy-prod:
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Production')
+    needs: test
+    uses: ./.github/workflows/deploy-lambda.yml
+    with:
+      environment: Production
+      function-name: TestApi-prod
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}

@@ -48,9 +48,10 @@ public class IntegrationTests : IAsyncLifetime
     {
         // Act
         var response = await _client!.GetAsync("/weatherforecast");
-        var content = await response.Content.ReadAsStringAsync();
 
         // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(content);
         Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
     }
@@ -60,9 +61,10 @@ public class IntegrationTests : IAsyncLifetime
     {
         // Act
         var response = await _client!.GetAsync("/weatherforecast");
-        var content = await response.Content.ReadAsStringAsync();
 
         // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(content);
         Assert.Equal(5, doc.RootElement.GetArrayLength());
     }
@@ -72,9 +74,10 @@ public class IntegrationTests : IAsyncLifetime
     {
         // Act
         var response = await _client!.GetAsync("/weatherforecast");
-        var content = await response.Content.ReadAsStringAsync();
 
         // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(content);
         var forecasts = doc.RootElement;
 
@@ -145,14 +148,81 @@ public class IntegrationTests : IAsyncLifetime
     {
         // Act
         var response = await _client!.GetAsync("/weatherforecast");
-        var content = await response.Content.ReadAsStringAsync();
 
         // Assert
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(content);
         foreach (var forecast in doc.RootElement.EnumerateArray())
         {
             var tempC = forecast.GetProperty("temperatureC").GetInt32();
             Assert.InRange(tempC, -20, 55);
         }
+    }
+
+    [Fact]
+    public async Task GetHealthz_ShouldReturn200Ok()
+    {
+        var response = await _client!.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetHealthz_ShouldReturnHealthyStatus()
+    {
+        var response = await _client!.GetAsync("/healthz");
+        response.EnsureSuccessStatusCode();
+        var content = await response.Content.ReadAsStringAsync();
+
+        using var doc = JsonDocument.Parse(content);
+        Assert.Equal("healthy", doc.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task App_WithElkSink_StartsAndResponds()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            b.UseSetting("LoggingSink", "elk")
+        );
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task App_WithSeqSink_StartsAndResponds()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            b.UseSetting("LoggingSink", "seq")
+        );
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task App_WithNoSink_StartsAndResponds()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            b.UseSetting("LoggingSink", "")
+        );
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task App_WithElasticApmEnabled_StartsAndResponds()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            b.UseSetting("ElasticApm:Enabled", "true")
+        );
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }

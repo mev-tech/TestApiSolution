@@ -20,13 +20,96 @@ services:
   api:
     build: .
     ports:
-      - "8080:8080"
+      - "8000:8000"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: Host=db;Port=5432;Database=appdb;Username=app;Password=app
+      LoggingSink: ${LOGGING_SINK:-seq}
+      Seq__ServerUrl: http://seq:5341
+      Elasticsearch__Url: http://elasticsearch:9200
     depends_on:
       db:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+        required: false
+
+  # --- Seq (lightweight structured log viewer) ---
+  # Usage: docker compose --profile seq up
+  # UI: http://localhost:8081
+  seq:
+    image: datalust/seq:latest
+    profiles: ["seq"]
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORD: "admin"
+    ports:
+      - "5341:5341"
+      - "8081:80"
+    volumes:
+      - seqdata:/data
+
+  # --- ELK Stack ---
+  # Usage: docker compose --profile elk up
+  # Kibana: http://localhost:5601
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    profiles: ["elk", "apm"]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.2
+    profiles: ["elk", "apm"]
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # --- Elastic APM Server ---
+  # Usage: docker compose --profile apm up  (also starts elasticsearch + kibana)
+  # APM endpoint: http://localhost:8200
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:8.12.2
+    profiles: ["apm"]
+    ports:
+      - "8200:8200"
+    command: >
+      apm-server -e
+        -E output.elasticsearch.hosts=["elasticsearch:9200"]
+        -E apm-server.host=0.0.0.0:8200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # --- Portainer (Docker management UI) ---
+  # Usage: always started (no profile required)
+  # UI: http://localhost:9000
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainerdata:/data
+    restart: unless-stopped
 
 volumes:
   pgdata:
+  seqdata:
+  esdata:
+  portainerdata:
