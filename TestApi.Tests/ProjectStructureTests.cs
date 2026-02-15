@@ -242,4 +242,4 @@ public class ProjectStructureTests
         // Assert
         Assert.Contains("<Nullable>enable</Nullable>", content);
     }
-}
+}

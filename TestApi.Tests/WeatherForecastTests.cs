@@ -252,4 +252,4 @@ public class WeatherForecastTests
         // Act & Assert
         Assert.Equal(summary, forecast.Summary);
     }
-}
+}

@@ -334,4 +334,4 @@ public class WeatherForecastEdgeCasesTests
         // Act & Assert
         Assert.True(forecast1 != forecast2);
     }
-}
+}
