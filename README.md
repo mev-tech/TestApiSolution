@@ -31,8 +31,8 @@ dotnet restore
 # Run the API
 dotnet run --project TestApi/TestApi.csproj
 
-# API will be available at http://localhost:5040
-# Swagger UI at http://localhost:5040/swagger
+# API will be available at https://localhost:5001
+# Swagger UI at https://localhost:5001/swagger
 ```
 
 ### Running with Docker Compose
