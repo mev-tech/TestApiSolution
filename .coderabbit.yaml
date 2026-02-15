@@ -58,10 +58,6 @@ reviews:
   # Collapse walkthrough by default to reduce noise
   collapse_walkthrough: true
 
-finishing_touches:
-  docstrings:
-    enabled: false
-
 chat:
   # Allow @coderabbitai mentions in PR comments to ask follow-up questions
   auto_reply: true
