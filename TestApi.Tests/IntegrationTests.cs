@@ -208,4 +208,16 @@ public class IntegrationTests : IAsyncLifetime
         var response = await client.GetAsync("/healthz");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task App_WithElasticApmEnabled_StartsAndResponds()
+    {
+        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            b.UseSetting("ElasticApm:Enabled", "true")
+        );
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/healthz");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
 }
