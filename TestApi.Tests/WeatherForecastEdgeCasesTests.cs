@@ -1,11 +1,5 @@
 namespace TestApi.Tests;
 
-// WeatherForecast record for testing (matches Program.cs)
-internal record WeatherForecastForEdgeCases(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
-
 /// <summary>
 /// Additional edge case and boundary tests for WeatherForecast functionality.
 /// These tests strengthen confidence by testing extreme values and unusual scenarios.
@@ -20,7 +14,7 @@ public class WeatherForecastEdgeCasesTests
         var temperatureC = int.MaxValue;
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(date, temperatureC, "Extreme");
+        var forecast = new WeatherForecast(date, temperatureC, "Extreme");
         var temperatureF = forecast.TemperatureF;
 
         // Assert - Should not throw, just perform the calculation
@@ -35,7 +29,7 @@ public class WeatherForecastEdgeCasesTests
         var temperatureC = int.MinValue;
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(date, temperatureC, "Extreme");
+        var forecast = new WeatherForecast(date, temperatureC, "Extreme");
         var temperatureF = forecast.TemperatureF;
 
         // Assert - Should not throw, just perform the calculation
@@ -49,7 +43,7 @@ public class WeatherForecastEdgeCasesTests
         var minDate = DateOnly.MinValue; // 0001-01-01
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(minDate, 20, "Ancient");
+        var forecast = new WeatherForecast(minDate, 20, "Ancient");
 
         // Assert
         Assert.Equal(minDate, forecast.Date);
@@ -62,7 +56,7 @@ public class WeatherForecastEdgeCasesTests
         var maxDate = DateOnly.MaxValue; // 9999-12-31
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(maxDate, 20, "Far Future");
+        var forecast = new WeatherForecast(maxDate, 20, "Far Future");
 
         // Assert
         Assert.Equal(maxDate, forecast.Date);
@@ -76,7 +70,7 @@ public class WeatherForecastEdgeCasesTests
         var longSummary = new string('A', 10000); // 10,000 character string
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(date, 20, longSummary);
+        var forecast = new WeatherForecast(date, 20, longSummary);
 
         // Assert
         Assert.Equal(longSummary, forecast.Summary);
@@ -91,7 +85,7 @@ public class WeatherForecastEdgeCasesTests
         var specialSummary = "Temperature: 20°C ☀️ 🌡️ \"Hot\" & <Sunny>";
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(date, 20, specialSummary);
+        var forecast = new WeatherForecast(date, 20, specialSummary);
 
         // Assert
         Assert.Equal(specialSummary, forecast.Summary);
@@ -105,7 +99,7 @@ public class WeatherForecastEdgeCasesTests
         var unicodeSummary = "晴れ 太陽 🌞 Sól солнце";
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(date, 20, unicodeSummary);
+        var forecast = new WeatherForecast(date, 20, unicodeSummary);
 
         // Assert
         Assert.Equal(unicodeSummary, forecast.Summary);
@@ -116,7 +110,7 @@ public class WeatherForecastEdgeCasesTests
     {
         // Arrange
         var date = new DateOnly(2026, 2, 15);
-        var forecast = new WeatherForecastForEdgeCases(date, 25, "Warm");
+        var forecast = new WeatherForecast(date, 25, "Warm");
 
         // Act
         var tempF1 = forecast.TemperatureF;
@@ -133,7 +127,7 @@ public class WeatherForecastEdgeCasesTests
     {
         // Arrange
         var date = new DateOnly(2026, 2, 15);
-        var forecast = new WeatherForecastForEdgeCases(date, 20, "Mild");
+        var forecast = new WeatherForecast(date, 20, "Mild");
 
         // Act
         var result = forecast.ToString();
@@ -148,7 +142,7 @@ public class WeatherForecastEdgeCasesTests
     {
         // Arrange
         var date = new DateOnly(2026, 2, 15);
-        var forecast = new WeatherForecastForEdgeCases(date, 20, "Mild");
+        var forecast = new WeatherForecast(date, 20, "Mild");
 
         // Act
         var hash1 = forecast.GetHashCode();
@@ -163,7 +157,7 @@ public class WeatherForecastEdgeCasesTests
     {
         // Arrange
         var date = new DateOnly(2026, 2, 15);
-        var forecast = new WeatherForecastForEdgeCases(date, 20, "Mild");
+        var forecast = new WeatherForecast(date, 20, "Mild");
 
         // Act
         var (deconstructedDate, deconstructedTempC, deconstructedSummary) = forecast;
@@ -187,7 +181,7 @@ public class WeatherForecastEdgeCasesTests
         var date = baseDate.AddDays(dayOffset);
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(date, 20, "Mild");
+        var forecast = new WeatherForecast(date, 20, "Mild");
 
         // Assert
         Assert.Equal(date, forecast.Date);
@@ -198,7 +192,7 @@ public class WeatherForecastEdgeCasesTests
     public void WeatherForecast_Collection_ShouldSupportLinqOperations()
     {
         // Arrange
-        var forecasts = new List<WeatherForecastForEdgeCases>
+        var forecasts = new List<WeatherForecast>
         {
             new(new DateOnly(2026, 2, 15), 10, "Cool"),
             new(new DateOnly(2026, 2, 16), 20, "Mild"),
@@ -221,9 +215,9 @@ public class WeatherForecastEdgeCasesTests
     {
         // Arrange & Act
         // Test a few known conversions to ensure the formula is approximately correct
-        var forecast0 = new WeatherForecastForEdgeCases(DateOnly.FromDateTime(DateTime.Now), 0, "Test");
-        var forecast100 = new WeatherForecastForEdgeCases(DateOnly.FromDateTime(DateTime.Now), 100, "Test");
-        var forecastMinus40 = new WeatherForecastForEdgeCases(DateOnly.FromDateTime(DateTime.Now), -40, "Test");
+        var forecast0 = new WeatherForecast(DateOnly.FromDateTime(DateTime.Now), 0, "Test");
+        var forecast100 = new WeatherForecast(DateOnly.FromDateTime(DateTime.Now), 100, "Test");
+        var forecastMinus40 = new WeatherForecast(DateOnly.FromDateTime(DateTime.Now), -40, "Test");
 
         // Assert
         // 0°C = 32°F (exact)
@@ -246,7 +240,7 @@ public class WeatherForecastEdgeCasesTests
         var whitespaceSummary = "   ";
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(date, 20, whitespaceSummary);
+        var forecast = new WeatherForecast(date, 20, whitespaceSummary);
 
         // Assert
         Assert.Equal(whitespaceSummary, forecast.Summary);
@@ -257,7 +251,7 @@ public class WeatherForecastEdgeCasesTests
     {
         // Arrange
         var date = new DateOnly(2026, 2, 15);
-        var original = new WeatherForecastForEdgeCases(date, 20, "Mild");
+        var original = new WeatherForecast(date, 20, "Mild");
 
         // Act
         var modified1 = original with { Date = date.AddDays(1) };
@@ -281,7 +275,7 @@ public class WeatherForecastEdgeCasesTests
         var date = new DateOnly(2026, 2, 15);
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(date, 20, null);
+        var forecast = new WeatherForecast(date, 20, null);
 
         // Assert
         Assert.Null(forecast.Summary);
@@ -295,7 +289,7 @@ public class WeatherForecastEdgeCasesTests
         var temperatureC = 0;
 
         // Act
-        var forecast = new WeatherForecastForEdgeCases(date, temperatureC, "Freezing");
+        var forecast = new WeatherForecast(date, temperatureC, "Freezing");
         var temperatureF = forecast.TemperatureF;
 
         // Assert - 0°C should equal 32°F
@@ -308,8 +302,8 @@ public class WeatherForecastEdgeCasesTests
     {
         // Arrange
         var date = new DateOnly(2026, 2, 15);
-        var forecast1 = new WeatherForecastForEdgeCases(date, 20, "Mild");
-        var forecast2 = new WeatherForecastForEdgeCases(date, 20, "Mild");
+        var forecast1 = new WeatherForecast(date, 20, "Mild");
+        var forecast2 = new WeatherForecast(date, 20, "Mild");
 
         // Act & Assert
         Assert.Equal(forecast1, forecast2);
@@ -321,8 +315,8 @@ public class WeatherForecastEdgeCasesTests
     {
         // Arrange
         var date = new DateOnly(2026, 2, 15);
-        var forecast1 = new WeatherForecastForEdgeCases(date, 20, "Mild");
-        var forecast2 = new WeatherForecastForEdgeCases(date, 25, "Warm");
+        var forecast1 = new WeatherForecast(date, 20, "Mild");
+        var forecast2 = new WeatherForecast(date, 25, "Warm");
 
         // Act & Assert
         Assert.NotEqual(forecast1, forecast2);
@@ -334,8 +328,8 @@ public class WeatherForecastEdgeCasesTests
     {
         // Arrange
         var date = new DateOnly(2026, 2, 15);
-        var forecast1 = new WeatherForecastForEdgeCases(date, 20, "Mild");
-        var forecast2 = new WeatherForecastForEdgeCases(date, 20, "Hot");
+        var forecast1 = new WeatherForecast(date, 20, "Mild");
+        var forecast2 = new WeatherForecast(date, 20, "Hot");
 
         // Act & Assert
         Assert.True(forecast1 != forecast2);
