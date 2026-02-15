@@ -6,6 +6,10 @@ internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
 
+/// <summary>
+/// Unit tests for WeatherForecast record functionality.
+/// Tests verify temperature conversion, record properties, record equality, and edge cases.
+/// </summary>
 public class WeatherForecastTests
 {
     [Fact]
