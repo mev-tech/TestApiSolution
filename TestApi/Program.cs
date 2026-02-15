@@ -1,51 +1,130 @@
-var builder = WebApplication.CreateBuilder(args);
+using Elastic.Apm.NetCoreAll;
+using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.Elasticsearch;
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+try
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    var builder = WebApplication.CreateBuilder(args);
 
-// Skip HTTPS redirect on Lambda — API Gateway handles TLS termination
-if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_LAMBDA_FUNCTION_NAME")))
+    builder.Host.UseSerilog(
+        (context, services, configuration) =>
+        {
+            configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .ReadFrom.Services(services);
+
+            var sink = context.Configuration["LoggingSink"];
+
+            if (string.Equals(sink, "seq", StringComparison.OrdinalIgnoreCase))
+            {
+                var seqUrl = context.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341";
+                configuration.WriteTo.Seq(seqUrl);
+            }
+            else if (
+                string.Equals(sink, "elk", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(sink, "elasticsearch", StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                var esUrl = context.Configuration["Elasticsearch:Url"] ?? "http://localhost:9200";
+                configuration.WriteTo.Elasticsearch(
+                    new ElasticsearchSinkOptions(new Uri(esUrl))
+                    {
+                        AutoRegisterTemplate = true,
+                        IndexFormat = "testapi-{0:yyyy.MM.dd}",
+                    }
+                );
+            }
+        }
+    );
+
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+
+    builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
+
+    if (builder.Configuration.GetValue<bool>("ElasticApm:Enabled"))
+    {
+        builder.Services.AddAllElasticApm();
+    }
+
+    var app = builder.Build();
+
+    app.UseSerilogRequestLogging(options =>
+    {
+        options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+        {
+            diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+            diagnosticContext.Set(
+                "UserAgent",
+                httpContext.Request.Headers.UserAgent.ToString()
+            );
+        };
+    });
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
+    // Skip HTTPS redirect on Lambda — API Gateway handles TLS termination
+    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_LAMBDA_FUNCTION_NAME")))
+    {
+        app.UseHttpsRedirection();
+    }
+
+    app.MapGet("/weatherforecast", GetWeatherForecast)
+        .WithName("GetWeatherForecast")
+        .WithOpenApi();
+
+    app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
+
+    app.Run();
+}
+catch (Exception ex)
 {
-    app.UseHttpsRedirection();
+    Log.Fatal(ex, "Application terminated unexpectedly");
 }
-
-app.MapGet("/weatherforecast", GetWeatherForecast)
-    .WithName("GetWeatherForecast")
-    .WithOpenApi();
-
-app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
-
-app.Run();
+finally
+{
+    Log.CloseAndFlush();
+}
 
 public partial class Program
 {
     private static readonly string[] Summaries =
     [
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+        "Freezing",
+        "Bracing",
+        "Chilly",
+        "Cool",
+        "Mild",
+        "Warm",
+        "Balmy",
+        "Hot",
+        "Sweltering",
+        "Scorching",
     ];
 
     public static WeatherForecast[] GetWeatherForecast()
     {
-        return Enumerable.Range(1, 5)
+        return Enumerable
+            .Range(1, 5)
             .Select(index =>
                 new WeatherForecast(
                     DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
                     Random.Shared.Next(-20, 55),
                     Summaries[Random.Shared.Next(Summaries.Length)]
-                ))
+                )
+            )
             .ToArray();
     }
 }
