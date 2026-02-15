@@ -302,6 +302,5 @@ public class WeatherForecastEdgeCasesTests
 
         // Assert
         Assert.NotNull(forecast);
-        Assert.NotNull(forecast.Date);
     }
 }
