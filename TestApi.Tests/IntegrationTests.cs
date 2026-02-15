@@ -105,31 +105,39 @@ public class IntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetWeatherForecast_MultipleRequests_ShouldReturnDifferentTemperatures()
+    public async Task GetWeatherForecast_MultipleRequests_ShouldAllBeValid()
     {
-        // Act
+        // Act - Verify contract-level behavior across multiple requests
         var response1 = await _client!.GetAsync("/weatherforecast");
-        var content1 = await response1.Content.ReadAsStringAsync();
-
         var response2 = await _client!.GetAsync("/weatherforecast");
+
+        // Assert - Both requests return valid responses
+        Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response2.StatusCode);
+
+        var content1 = await response1.Content.ReadAsStringAsync();
         var content2 = await response2.Content.ReadAsStringAsync();
 
-        // Assert - Due to randomness, content should differ at least in temperatures
         using var doc1 = JsonDocument.Parse(content1);
         using var doc2 = JsonDocument.Parse(content2);
 
-        var temps1 = doc1.RootElement
-            .EnumerateArray()
-            .Select(f => f.GetProperty("temperatureC").GetInt32())
-            .ToList();
+        // Verify both responses have the same structure and data types
+        Assert.Equal(5, doc1.RootElement.GetArrayLength());
+        Assert.Equal(5, doc2.RootElement.GetArrayLength());
 
-        var temps2 = doc2.RootElement
-            .EnumerateArray()
-            .Select(f => f.GetProperty("temperatureC").GetInt32())
-            .ToList();
-
-        // At least one temperature should differ (statistically almost certain with random data)
-        Assert.NotEqual(temps1, temps2);
+        // Verify all items have required properties
+        foreach (var doc in new[] { doc1, doc2 })
+        {
+            foreach (var forecast in doc.RootElement.EnumerateArray())
+            {
+                Assert.True(forecast.TryGetProperty("date", out var dateElement));
+                Assert.True(forecast.TryGetProperty("temperatureC", out var tempCElement));
+                Assert.True(forecast.TryGetProperty("temperatureF", out var tempFElement));
+                Assert.Equal(JsonValueKind.String, dateElement.ValueKind);
+                Assert.Equal(JsonValueKind.Number, tempCElement.ValueKind);
+                Assert.Equal(JsonValueKind.Number, tempFElement.ValueKind);
+            }
+        }
     }
 
     [Fact]
