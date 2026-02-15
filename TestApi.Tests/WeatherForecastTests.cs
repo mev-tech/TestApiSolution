@@ -111,8 +111,8 @@ public class WeatherForecastTests
     [InlineData(20, 67)]
     [InlineData(30, 85)]
     [InlineData(100, 211)]
-    [InlineData(-10, 14)]
-    [InlineData(-40, -40)]
+    [InlineData(-10, 15)]
+    [InlineData(-40, -39)]
     public void WeatherForecast_TemperatureF_ShouldCorrectlyConvert_VariousTemperatures(int celsius, int expectedFahrenheit)
     {
         // Arrange

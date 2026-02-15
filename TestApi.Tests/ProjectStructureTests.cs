@@ -152,7 +152,7 @@ public class ProjectStructureTests
     public void Dockerfile_ShouldNotBeEmpty()
     {
         // Arrange
-        var dockerfilePath = "../../../Dockerfile";
+        var dockerfilePath = Path.Combine(GetSolutionRoot(), "Dockerfile");
 
         // Act
         var content = File.ReadAllText(dockerfilePath);
