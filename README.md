@@ -61,7 +61,7 @@ Returns a 5-day weather forecast with random temperatures.
   {
     "date": "2026-02-15",
     "temperatureC": 12,
-    "temperatureFahrenheit": 53,
+    "temperatureF": 53,
     "summary": "Mild"
   }
 ]
