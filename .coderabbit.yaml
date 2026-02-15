@@ -1,0 +1,62 @@
+# CodeRabbit configuration
+# Docs: https://docs.coderabbit.ai/getting-started/configure-coderabbit
+
+language: "en-US"
+
+reviews:
+  # Automatically review every PR
+  auto_review:
+    enabled: true
+    drafts: false         # Skip draft PRs; set to true to also review drafts
+    base_branches:
+      - "master"
+
+  # What to focus on during reviews
+  profile: "chill"        # "chill" = concise feedback | "assertive" = strict feedback
+
+  # Request changes workflow — set to true to block merges when issues are found
+  request_changes_workflow: false
+
+  path_filters:
+    # Ignore generated/build artefacts
+    - "!**/bin/**"
+    - "!**/obj/**"
+    - "!**/*.Designer.cs"
+
+  path_instructions:
+    - path: "**/*.cs"
+      instructions: |
+        This is a .NET 8 ASP.NET Core Web API using Minimal APIs.
+        - Follow C# conventions and .NET naming guidelines.
+        - Prefer async/await for I/O-bound operations.
+        - Nullable reference types are enabled; ensure null safety.
+        - Flag any missing input validation on API endpoints.
+        - Check for proper error handling and meaningful HTTP status codes.
+
+    - path: "TestApi.Tests/**"
+      instructions: |
+        xUnit test project.
+        - Tests should follow the Arrange-Act-Assert pattern.
+        - Flag tests with no assertions or that test implementation details.
+        - Ensure edge cases and failure paths are covered.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        GitHub Actions workflows.
+        - Check for hardcoded secrets or credentials.
+        - Ensure steps use pinned action versions (SHA or tag).
+        - Flag any permissions that are broader than necessary.
+
+  # Show review summary at the top of the PR
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+
+  # Post a review comment with a poem (fun, harmless)
+  poem: false
+
+  # Collapse walkthrough by default to reduce noise
+  collapse_walkthrough: true
+
+chat:
+  # Allow @coderabbitai mentions in PR comments to ask follow-up questions
+  auto_reply: true
