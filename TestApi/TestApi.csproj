@@ -24,4 +24,11 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TestApi.Domain\TestApi.Domain.csproj" />
+    <ProjectReference Include="..\TestApi.Dal\TestApi.Dal.csproj" />
+    <ProjectReference Include="..\TestApi.Bll\TestApi.Bll.csproj" />
+    <ProjectReference Include="..\TestApi.Common\TestApi.Common.csproj" />
+  </ItemGroup>
+
 </Project>

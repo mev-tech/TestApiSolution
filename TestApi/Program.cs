@@ -1,8 +1,13 @@
 using System.Diagnostics.CodeAnalysis;
 using Elastic.Apm.NetCoreAll;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Elasticsearch;
+using TestApi.Bll.Services;
+using TestApi.Dal;
+using TestApi.Dal.Repositories;
+using TestApi.Domain.Entities;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
@@ -45,6 +50,14 @@ try
         }
     );
 
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
+    );
+
+    builder.Services.AddScoped<IWeatherForecastRepository, WeatherForecastRepository>();
+    builder.Services.AddScoped<IWeatherForecastService, WeatherForecastService>();
+
+    builder.Services.AddControllers();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
@@ -57,6 +70,30 @@ try
     }
 
     var app = builder.Build();
+
+    // Apply migrations and seed on startup
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        if (db.Database.IsRelational())
+            db.Database.Migrate();
+        else
+            db.Database.EnsureCreated();
+
+        if (!await db.WeatherForecasts.AnyAsync())
+        {
+            var summaries = Program.Summaries;
+            db.WeatherForecasts.AddRange(
+                Enumerable.Range(1, 10).Select(i => new WeatherForecast
+                {
+                    Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(i)),
+                    TemperatureC = Random.Shared.Next(-20, 55),
+                    Summary = summaries[Random.Shared.Next(summaries.Length)],
+                })
+            );
+            await db.SaveChangesAsync();
+        }
+    }
 
     app.UseSerilogRequestLogging(options =>
     {
@@ -82,10 +119,7 @@ try
         app.UseHttpsRedirection();
     }
 
-    app.MapGet("/weatherforecast", GetWeatherForecast)
-        .WithName("GetWeatherForecast")
-        .WithOpenApi();
-
+    app.MapControllers();
     app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
     app.Run();
@@ -103,7 +137,7 @@ finally
 [ExcludeFromCodeCoverage]
 public partial class Program
 {
-    private static readonly string[] Summaries =
+    internal static readonly string[] Summaries =
     [
         "Freezing",
         "Bracing",
@@ -116,40 +150,4 @@ public partial class Program
         "Sweltering",
         "Scorching",
     ];
-
-    /// <summary>
-    /// Returns a 5-day weather forecast with random temperatures and summaries.
-    /// </summary>
-    public static WeatherForecast[] GetWeatherForecast()
-    {
-        return Enumerable
-            .Range(1, 5)
-            .Select(index =>
-                new WeatherForecast(
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    Summaries[Random.Shared.Next(Summaries.Length)]
-                )
-            )
-            .ToArray();
-    }
-}
-
-/// <summary>
-/// Represents a weather forecast with date, temperature in Celsius, and summary description.
-/// </summary>
-/// <param name="Date">The date of the forecast.</param>
-/// <param name="TemperatureC">Temperature in Celsius.</param>
-/// <param name="Summary">Weather condition summary (e.g., "Mild", "Warm").</param>
-[ExcludeFromCodeCoverage]
-public record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    /// <summary>
-    /// Gets the temperature in Fahrenheit, converted from TemperatureC.
-    /// </summary>
-    /// <remarks>
-    /// Uses the formula: F = 32 + (C / 0.5556)
-    /// Integer division may cause slight inaccuracies.
-    /// </remarks>
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
