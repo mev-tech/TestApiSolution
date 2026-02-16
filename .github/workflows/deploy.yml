@@ -59,6 +59,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # Deploy to staging: auto on push to master OR manual dispatch with Staging selected
   deploy-staging:
@@ -72,6 +73,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # Deploy to prod: auto on published GitHub Release OR manual dispatch with Production selected
   deploy-prod:
@@ -85,3 +87,4 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
